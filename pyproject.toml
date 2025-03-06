@@ -1,0 +1,33 @@
+[project]
+name = "kurisunet"
+version = "0.1.0"
+description = "Config based pytorch model framework"
+authors = [{ name = "KurisuNya", email = "cuizhu1216@gmail.com" }]
+dependencies = [
+    "safetensors>=0.5.3",
+    "pyyaml>=6.0.2",
+    "loguru>=0.7.3",
+    "torch==2.6.0+cpu",
+    "torchvision==0.21.0+cpu",
+    "kurisuinfo>=0.2.0",
+]
+readme = "README.md"
+requires-python = ">= 3.9"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = []
+
+[[tool.rye.sources]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cpu"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kurisunet"]
