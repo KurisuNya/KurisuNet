@@ -41,10 +41,12 @@ def parse_args(
     def check_args_format(define_list, args, kwargs):
         if len(args) > len(define_list):
             raise ValueError(f"Expected {len(define_list)} positional arguments")
-        valid_keys = [get_define_name(arg) for arg in define_list[len(args) :]]
+        kw_list = define_list[len(args) :]
+        valid_keys = [get_define_name(arg) for arg in kw_list]
         invalid_keys = set(kwargs.keys()) - set(valid_keys)
         if invalid_keys:
             raise ValueError(f"No parameter named {invalid_keys}")
+        valid_keys = [arg for arg in kw_list if not isinstance(arg, dict)]
         invalid_keys = set(valid_keys) - set(kwargs.keys())
         if invalid_keys:
             raise ValueError(f"Argument missing for parameters {invalid_keys}")
