@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
     set_logger_level("info")
     config = yaml.safe_load(open(Path(__file__).parent / cfg["path"]))
-    Register.register_config_dict(config)
+    Register.register_config(config)
     module = Register.get(cfg["module"])(*cfg["args"], **cfg["kwargs"])
     module_summary = str(summary(module, cfg["input_shape"], verbose=0))
     logger.info(f"Summary of {cfg['module']}:\n{module_summary}")

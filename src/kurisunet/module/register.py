@@ -21,13 +21,6 @@ class Register:
         logger.info(f"Module {name} registered successfully.")
 
     @staticmethod
-    def __get_builtin_modules(name: str) -> ModuleLike | None:
-        if "nn." in name:
-            return getattr(nn, name.split(".")[-1])
-        if name == "Output":
-            return OutputModule  # type: ignore
-
-    @staticmethod
     def get(name: str) -> ModuleLike:
         if module := Register.__get_builtin_modules(name):
             return module
@@ -36,7 +29,19 @@ class Register:
         return Register.__modules[name]
 
     @staticmethod
-    def register_config(name: str, config: dict):
+    def __get_builtin_modules(name: str) -> ModuleLike | None:
+        if "nn." in name:
+            return getattr(nn, name.split(".")[-1])
+        if name == "Output":
+            return OutputModule  # type: ignore
+
+    @staticmethod
+    def register_config(config_dict: dict[str, dict]):
+        for k, v in deepcopy(config_dict).items():
+            Register.__register_single_config(k, v)
+
+    @staticmethod
+    def __register_single_config(name: str, config: dict):
         def register_stream_module(name, config):
             args = lambda a, k: parse_args(config["args"], a, k)
             layers = lambda a, k: parse_layers(config["layers"], args(a, k))
@@ -56,8 +61,3 @@ class Register:
             register_lambda_module(name, eval(config["forward"]))
             return
         logger.warning(f"{name} can't be recognized as a module.")
-
-    @staticmethod
-    def register_config_dict(config_dict: dict[str, dict]):
-        for k, v in deepcopy(config_dict).items():
-            Register.register_config(k, v)
