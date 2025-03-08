@@ -18,7 +18,7 @@ if __name__ == "__main__":
     cfg = {
         "module": "SimpleCNN",
         "args": [],
-        "kwargs": {"class_num": 2},
+        "kwargs": {"in_ch": 3, "class_num": 2},
         "input_shape": (1, 3, 224, 224),
         "path": "./config.yaml",
     }

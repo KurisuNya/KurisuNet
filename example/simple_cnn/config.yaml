@@ -14,22 +14,21 @@ ConvBNReLU:
     - [-1, nn.ReLU, { inplace: true }]
 
 Classifier:
-  args: [in_ch, num_classes]
+  args: [in_ch, class_num]
   layers:
     - [-1, nn.AdaptiveAvgPool2d, [[1, 1]]]
     - [-1, nn.Conv2d, [args.in_ch, args.in_ch, 1, 1, 0], { bias: true }]
     - [-1, nn.ReLU, { inplace: true }]
     - [-1, Flatten]
-    - [-1, nn.Linear, [args.in_ch, args.num_classes]]
+    - [-1, nn.Linear, [args.in_ch, args.class_num]]
 
 SimpleCNN:
-  args: ["class_num"]
+  args: [in_ch, class_num]
   layers:
-    - [-1, ConvBNReLU, [3, 16, 3, 1, 1], { bias: false }]
+    - [-1, ConvBNReLU, [args.in_ch, 16, 3, 1, 1], { bias: false }]
     - [-1, ConvBNReLU, [16, 32, 3, 1, 1], { bias: false }]
     - [-1, ConvBNReLU, [32, 64, 3, 1, 1], { bias: false }]
     - [-1, ConvBNReLU, [64, 128, 3, 1, 1], { bias: false }]
     - [-1, ConvBNReLU, [128, 256, 3, 1, 1], { bias: false }]
     - [-1, ConvBNReLU, [256, 512, 3, 1, 1], { bias: false }]
     - [-1, Classifier, [512, args.class_num]]
-    - [[-1, -2], Output]
