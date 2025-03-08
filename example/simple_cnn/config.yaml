@@ -23,7 +23,7 @@ Classifier:
     - [-1, nn.Linear, [args.in_ch, args.class_num]]
 
 SimpleCNN:
-  args: [in_ch, class_num]
+  args: [in_ch, class_num, width]
   layers:
     - [-1, ConvBNReLU, [args.in_ch, 16, 3, 1, 1], { bias: false }]
     - [-1, ConvBNReLU, [16, 32, 3, 1, 1], { bias: false }]
@@ -32,3 +32,4 @@ SimpleCNN:
     - [-1, ConvBNReLU, [128, 256, 3, 1, 1], { bias: false }]
     - [-1, ConvBNReLU, [256, 512, 3, 1, 1], { bias: false }]
     - [-1, Classifier, [512, args.class_num]]
+  wrapper: [resize_wrapper, [args.width], {}]

@@ -35,7 +35,7 @@ class LambdaModule(nn.Module, CustomizedModuleName):
 
 class StreamModule(nn.Module, CustomizedModuleName):
     def __init__(self, name: str, layers: list[Layer]):
-        from .register import Register
+        from .register import ModuleRegister
 
         super().__init__()
         self.__name = name
@@ -61,7 +61,7 @@ class StreamModule(nn.Module, CustomizedModuleName):
                 f"layer(s) with index(es) {self.__drop_indexes} "
                 f"is/are not connected to any other layer(s) and will be dropped."
             )
-        self.__modules = [Register.get(m)(*a, **k) for _, m, a, k in layers]
+        self.__modules = [ModuleRegister.get(m)(*a, **k) for _, m, a, k in layers]
         modules = filter(lambda m: isinstance(m, nn.Module), self.__modules)
         for i, module in enumerate(modules):
             self.add_module(str(i), module)  # type: ignore

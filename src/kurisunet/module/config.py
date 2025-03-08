@@ -63,13 +63,13 @@ def parse_args(
 
 
 def regularize_args_kwargs(arg_dict, args, kwargs):
-    from .register import Register
+    from .register import ModuleRegister
 
     def regularize_arg(arg):
         if isinstance(arg, str) and arg.startswith("args."):
             return arg_dict[arg[5:]]
         if isinstance(arg, str) and arg.startswith("module."):
-            return Register.get(arg[7:])
+            return ModuleRegister.get(arg[7:])
         return arg
 
     args, kwargs = deepcopy(args), deepcopy(kwargs)
@@ -78,6 +78,23 @@ def regularize_args_kwargs(arg_dict, args, kwargs):
     for key, value in kwargs.items():
         kwargs[key] = regularize_arg(value)
     return tuple(args), kwargs
+
+
+def parse_wrapper(wrapper: list, arg_dict: dict[str, Any]) -> list:
+    def regularize_wrapper_len(wrapper):
+        if len(wrapper) < 1:
+            raise ValueError("Invalid wrapper format.")
+        if len(wrapper) == 1:
+            return wrapper + [[], {}]
+        if len(wrapper) == 2 and isinstance(wrapper[1], list):
+            return wrapper[:1] + [wrapper[1], {}]
+        if len(wrapper) == 2 and isinstance(wrapper[1], dict):
+            return wrapper[:1] + [[], wrapper[1]]
+        return wrapper
+
+    wrapper = regularize_wrapper_len(deepcopy(wrapper))
+    wrapper[1], wrapper[2] = regularize_args_kwargs(arg_dict, wrapper[1], wrapper[2])
+    return wrapper
 
 
 Former = list[dict[int, int | str]]
