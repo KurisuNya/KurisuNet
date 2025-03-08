@@ -62,6 +62,24 @@ def parse_args(
     return parsed_args
 
 
+def regularize_args_kwargs(arg_dict, args, kwargs):
+    from .register import Register
+
+    def regularize_arg(arg):
+        if isinstance(arg, str) and arg.startswith("args."):
+            return arg_dict[arg[5:]]
+        if isinstance(arg, str) and arg.startswith("module."):
+            return Register.get(arg[7:])
+        return arg
+
+    args, kwargs = deepcopy(args), deepcopy(kwargs)
+    for i, arg in enumerate(args):
+        args[i] = regularize_arg(arg)
+    for key, value in kwargs.items():
+        kwargs[key] = regularize_arg(value)
+    return tuple(args), kwargs
+
+
 Former = list[dict[int, int | str]]
 Layer = tuple[Former, str, tuple[Any, ...], dict[str, Any]]
 
@@ -99,19 +117,9 @@ def parse_layers(layers: list[list], arg_dict: dict[str, Any]) -> list[Layer]:
 
         return [{convert_key(i, get_key(f)): get_value(f)} for f in former]
 
-    def regularize_args_kwargs(args, kwargs):
-        args, kwargs = deepcopy(args), deepcopy(kwargs)
-        for i, arg in enumerate(args):
-            if isinstance(arg, str) and arg.startswith("args."):
-                args[i] = arg_dict[arg[5:]]
-        for key, value in kwargs.items():
-            if isinstance(value, str) and value.startswith("args."):
-                kwargs[key] = arg_dict[value[5:]]
-        return tuple(args), kwargs
-
     layers = [regularize_layer_len(layer) for layer in deepcopy(layers)]
     for i, (former, _, args, kwargs) in enumerate(layers):
         layers[i][0] = regularize_former(i + 1, to_list(former))
-        layers[i][2], layers[i][3] = regularize_args_kwargs(args, kwargs)
+        layers[i][2], layers[i][3] = regularize_args_kwargs(arg_dict, args, kwargs)
 
     return layers  # type: ignore
