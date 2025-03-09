@@ -6,6 +6,7 @@ from typing import Callable
 
 from loguru import logger
 import torch.nn as nn
+import yaml
 
 from .config import parse_converter, parse_input, parse_layers, parse_main_module
 from .module import LambdaModule, OutputModule, StreamModule
@@ -86,14 +87,22 @@ class ModuleRegister:
             sys.modules[module_name] = module
             spec.loader.exec_module(module)  # type: ignore
 
+        def register_path_list(path_list):
+            py_suffix = [".py"]
+            config_suffix = [".yaml", ".yml"]
+            for path in filter(lambda x: x.suffix in py_suffix, path_list):
+                import_from_path(path.stem, path)
+            for path in filter(lambda x: x.suffix in config_suffix, path_list):
+                ModuleRegister.register_config(yaml.safe_load(open(path)))
+            for path in filter(lambda x: x.is_dir(), path_list):
+                register_path_list(list(path.iterdir()))
+
         def register(config: dict):
             for k, v in config.items():
                 ModuleRegister.__register_single_config(k, v)
 
         if "auto_register" in config_dict:
-            path_list = map(Path, config_dict["auto_register"])
-            for path in path_list:
-                import_from_path(path.stem, path)
+            register_path_list([Path(x) for x in config_dict["auto_register"]])
         register(deepcopy(get_except_keys(config_dict, except_keys)))
 
     @staticmethod
