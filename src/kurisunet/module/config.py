@@ -1,6 +1,8 @@
 from copy import deepcopy
 from typing import Any, Iterable
 
+import torch.nn as nn
+
 from .utils import get_first_key, get_first_value
 
 Define = str | dict[str, Any]
@@ -11,6 +13,29 @@ ArgDict = dict[str, Any]
 Former = list[dict[int, int | str]]
 Converter = tuple[str, Args, Kwargs]
 Layer = tuple[Former, str, Args, Kwargs]
+
+
+def __regularize_layer_like_len(layer_like: list, prefix_len: int) -> list:
+    if len(layer_like) < prefix_len or len(layer_like) > prefix_len + 2:
+        raise ValueError(f"Invalid format: {layer_like}")
+    if len(layer_like) == prefix_len:
+        return layer_like + [[], {}]
+    if len(layer_like) == prefix_len + 1 and isinstance(layer_like[-1], (list, tuple)):
+        return layer_like[:prefix_len] + [layer_like[-1], {}]
+    if len(layer_like) == prefix_len + 1 and isinstance(layer_like[-1], dict):
+        return layer_like[:prefix_len] + [[], layer_like[-1]]
+    return layer_like
+
+
+def get_main_module(config: dict) -> nn.Module:
+    if "main_module" not in config:
+        raise ValueError("No main module specified.")
+    from .register import ModuleRegister
+
+    ModuleRegister.register_config(config)
+    main_module = __regularize_layer_like_len(config["main_module"], 1)
+    name, args, kwargs = main_module
+    return ModuleRegister.get(name)(*args, **kwargs)
 
 
 def parse_input(defines: list[Define], args: Args = [], kwargs: Kwargs = {}) -> ArgDict:
@@ -81,18 +106,6 @@ def parse_args(arg_dict: ArgDict, args: Args, kwargs: Kwargs) -> tuple[Args, Kwa
     for key, value in kwargs.items():
         kwargs[key] = regularize_arg(value)
     return tuple(args), kwargs
-
-
-def __regularize_layer_like_len(layer_like: list, prefix_len: int) -> list:
-    if len(layer_like) < prefix_len or len(layer_like) > prefix_len + 2:
-        raise ValueError(f"Invalid format: {layer_like}")
-    if len(layer_like) == prefix_len:
-        return layer_like + [[], {}]
-    if len(layer_like) == prefix_len + 1 and isinstance(layer_like[-1], (list, tuple)):
-        return layer_like[:prefix_len] + [layer_like[-1], {}]
-    if len(layer_like) == prefix_len + 1 and isinstance(layer_like[-1], dict):
-        return layer_like[:prefix_len] + [[], layer_like[-1]]
-    return layer_like
 
 
 def parse_converter(converter: list, arg_dict: ArgDict) -> Converter:
