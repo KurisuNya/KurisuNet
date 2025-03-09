@@ -1,3 +1,6 @@
+auto_register:
+  - ./example/simple_cnn/converter.py
+
 Flatten:
   forward: "lambda x: x.view(x.size(0), -1)"
 
@@ -25,11 +28,11 @@ Classifier:
 SimpleCNN:
   args: [in_ch, class_num, width]
   layers:
-    - [-1, ConvBNReLU, [args.in_ch, 16, 3, 1, 1], { bias: false }]
-    - [-1, ConvBNReLU, [16, 32, 3, 1, 1], { bias: false }]
-    - [-1, ConvBNReLU, [32, 64, 3, 1, 1], { bias: false }]
-    - [-1, ConvBNReLU, [64, 128, 3, 1, 1], { bias: false }]
-    - [-1, ConvBNReLU, [128, 256, 3, 1, 1], { bias: false }]
-    - [-1, ConvBNReLU, [256, 512, 3, 1, 1], { bias: false }]
+    - [-1, ConvBNReLU, [args.in_ch, 16]]
+    - [-1, ConvBNReLU, [16, 32]]
+    - [-1, ConvBNReLU, [32, 64]]
+    - [-1, ConvBNReLU, [64, 128]]
+    - [-1, ConvBNReLU, [128, 256]]
+    - [-1, ConvBNReLU, [256, 512]]
     - [-1, Classifier, [512, args.class_num]]
-  wrapper: [resize_wrapper, [args.width], {}]
+  converter: [resize_converter, [args.width]]

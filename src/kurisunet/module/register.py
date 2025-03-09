@@ -1,10 +1,15 @@
 from copy import deepcopy
+import importlib.util
+from pathlib import Path
+import sys
 from typing import Callable
 
 from loguru import logger
 import torch.nn as nn
 
-from .config import parse_args, parse_layers, parse_wrapper
+from kurisunet.module.utils import get_except_key
+
+from .config import parse_input, parse_layers, parse_converter
 from .module import LambdaModule, OutputModule, StreamModule
 
 
@@ -13,26 +18,26 @@ def register_module(cls):
     return cls
 
 
-def register_wrapper(fn):
-    WrapperRegister.register(fn.__name__, fn)
+def register_converter(fn):
+    ConverterRegister.register(fn.__name__, fn)
     return fn
 
 
-class WrapperRegister:
-    __wrappers = {}
+class ConverterRegister:
+    __converters = {}
 
     @staticmethod
-    def register(name: str, wrapper: Callable):
-        if name in WrapperRegister.__wrappers:
-            raise ValueError(f"Wrapper {name} is already registered.")
-        WrapperRegister.__wrappers[name] = wrapper
-        logger.info(f"Wrapper {name} registered successfully.")
+    def register(name: str, converter: Callable):
+        if name in ConverterRegister.__converters:
+            raise ValueError(f"Converter {name} is already registered.")
+        ConverterRegister.__converters[name] = converter
+        logger.info(f"Converter {name} registered successfully.")
 
     @staticmethod
     def get(name: str) -> Callable:
-        if name not in WrapperRegister.__wrappers:
-            raise ValueError(f"Wrapper {name} is not registered.")
-        return WrapperRegister.__wrappers[name]
+        if name not in ConverterRegister.__converters:
+            raise ValueError(f"Converter {name} is not registered.")
+        return ConverterRegister.__converters[name]
 
 
 ModuleLike = type[nn.Module] | Callable[..., nn.Module]
@@ -65,38 +70,54 @@ class ModuleRegister:
 
     @staticmethod
     def register_config(config_dict: dict[str, dict]):
-        for k, v in deepcopy(config_dict).items():
-            ModuleRegister.__register_single_config(k, v)
+        def import_from_path(module_name, file_path):
+            spec = importlib.util.spec_from_file_location(module_name, file_path)
+            module = importlib.util.module_from_spec(spec)  # type: ignore
+            sys.modules[module_name] = module
+            spec.loader.exec_module(module)  # type: ignore
+
+        def register(config: dict):
+            for k, v in config.items():
+                ModuleRegister.__register_single_config(k, v)
+
+        if "auto_register" in config_dict:
+            path_list = map(Path, config_dict["auto_register"])
+            for path in path_list:
+                import_from_path(path.stem, path)
+        register(deepcopy(get_except_key(config_dict, "auto_register")))
 
     @staticmethod
     def __register_single_config(name: str, config: dict):
-        def register_stream_module(name, config):
-            arg_dict = lambda a, k: parse_args(config["args"], a, k)
-            layers = lambda a, k: parse_layers(config["layers"], arg_dict(a, k))
-            if "wrapper" not in config:
-                module = lambda *a, **k: StreamModule(name, layers(a, k))
-                ModuleRegister.register(name, module)
-                return
+        def get_wrapped_config(args, kwargs, config):
+            arg_dict = parse_input(config["args"], args, kwargs)
+            name, args, kwargs = parse_converter(config["converter"], arg_dict)
+            converter = ConverterRegister.get(name)(*args, **kwargs)
+            return converter(get_except_key(config, "converter"))
 
-            def wrapper(a, k):
-                name, args, kwargs = parse_wrapper(config["wrapper"], arg_dict(a, k))
-                return WrapperRegister.get(name)(*args, **kwargs)
+        def stream_module(args, kwargs, config):
+            arg_dict = parse_input(config["args"], args, kwargs)
+            layers = parse_layers(config["layers"], arg_dict)
+            return StreamModule(name, layers)
 
-            parsed_layers = lambda a, k: wrapper(a, k)(layers(a, k))
-            module = lambda *a, **k: StreamModule(name, parsed_layers(a, k))
-            ModuleRegister.register(name, module)
+        def lambda_module(args, kwargs, config):
+            return LambdaModule(name, eval(config["forward"]))
 
-        def register_lambda_module(name, forward):
-            ModuleRegister.register(name, lambda: LambdaModule(name, forward))
+        def register_module(name, config, parser):
+            def module(args, kwargs, config):
+                if "converter" in config:
+                    config = get_wrapped_config(args, kwargs, config)
+                return parser(args, kwargs, config)
+
+            ModuleRegister.register(name, lambda *a, **k: module(a, k, config))
 
         if not isinstance(config, dict):
             logger.warning(f"{name} can't be recognized as a module.")
             return
+        config["args"] = config.get("args", [])
         if "layers" in config:
-            config["args"] = config.get("args", [])
-            register_stream_module(name, config)
+            register_module(name, config, stream_module)
             return
         if "forward" in config:
-            register_lambda_module(name, eval(config["forward"]))
+            register_module(name, config, lambda_module)
             return
         logger.warning(f"{name} can't be recognized as a module.")

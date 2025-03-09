@@ -1,8 +1,8 @@
-from .register import ModuleRegister, WrapperRegister, register_module, register_wrapper
+from .register import ModuleRegister, ConverterRegister, register_module, register_converter
 
 __all__ = (
     "ModuleRegister",
-    "WrapperRegister",
+    "ConverterRegister",
     "register_module",
-    "register_wrapper",
+    "register_converter",
 )
