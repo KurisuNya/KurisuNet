@@ -1,15 +1,15 @@
 from .register import (
-    ModuleRegister,
     ConverterRegister,
-    register_module,
+    ModuleRegister,
+    get_main_module,
     register_converter,
+    register_module,
 )
-from .config import get_main_module
 
 __all__ = (
     "ModuleRegister",
     "ConverterRegister",
+    "get_main_module",
     "register_module",
     "register_converter",
-    "get_main_module",
 )

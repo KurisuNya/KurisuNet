@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Iterable
 
 
 def get_first_key(dic: dict) -> Any:
@@ -15,3 +15,7 @@ def get_first_item(dic: dict) -> tuple[Any, Any]:
 
 def get_except_key(dic: dict, key: Any) -> dict:
     return {k: v for k, v in dic.items() if k != key}
+
+
+def get_except_keys(dic: dict, keys: Iterable[Any]) -> dict:
+    return {k: v for k, v in dic.items() if k not in keys}

@@ -7,10 +7,11 @@ from typing import Callable
 from loguru import logger
 import torch.nn as nn
 
-from kurisunet.module.utils import get_except_key
-
-from .config import parse_input, parse_layers, parse_converter
+from .config import parse_converter, parse_input, parse_layers, parse_main_module
 from .module import LambdaModule, OutputModule, StreamModule
+from .utils import get_except_key, get_except_keys
+
+except_keys = ["auto_register", "main_module"]
 
 
 def register_module(cls):
@@ -21,6 +22,15 @@ def register_module(cls):
 def register_converter(fn):
     ConverterRegister.register(fn.__name__, fn)
     return fn
+
+
+def get_main_module(config: dict) -> nn.Module:
+    if "main_module" not in config:
+        raise ValueError("No main module specified.")
+
+    ModuleRegister.register_config(config)
+    name, args, kwargs = parse_main_module(config["main_module"])
+    return ModuleRegister.get(name)(*args, **kwargs)
 
 
 class ConverterRegister:
@@ -84,7 +94,7 @@ class ModuleRegister:
             path_list = map(Path, config_dict["auto_register"])
             for path in path_list:
                 import_from_path(path.stem, path)
-        register(deepcopy(get_except_key(config_dict, "auto_register")))
+        register(deepcopy(get_except_keys(config_dict, except_keys)))
 
     @staticmethod
     def __register_single_config(name: str, config: dict):

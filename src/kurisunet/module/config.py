@@ -1,8 +1,6 @@
 from copy import deepcopy
 from typing import Any, Iterable
 
-import torch.nn as nn
-
 from .utils import get_first_key, get_first_value
 
 Define = str | dict[str, Any]
@@ -12,6 +10,7 @@ ArgDict = dict[str, Any]
 
 Former = list[dict[int, int | str]]
 Converter = tuple[str, Args, Kwargs]
+MainModule = tuple[str, Args, Kwargs]
 Layer = tuple[Former, str, Args, Kwargs]
 
 
@@ -25,17 +24,6 @@ def __regularize_layer_like_len(layer_like: list, prefix_len: int) -> list:
     if len(layer_like) == prefix_len + 1 and isinstance(layer_like[-1], dict):
         return layer_like[:prefix_len] + [[], layer_like[-1]]
     return layer_like
-
-
-def get_main_module(config: dict) -> nn.Module:
-    if "main_module" not in config:
-        raise ValueError("No main module specified.")
-    from .register import ModuleRegister
-
-    ModuleRegister.register_config(config)
-    main_module = __regularize_layer_like_len(config["main_module"], 1)
-    name, args, kwargs = main_module
-    return ModuleRegister.get(name)(*args, **kwargs)
 
 
 def parse_input(defines: list[Define], args: Args = [], kwargs: Kwargs = {}) -> ArgDict:
@@ -112,6 +100,11 @@ def parse_converter(converter: list, arg_dict: ArgDict) -> Converter:
     converter = __regularize_layer_like_len(deepcopy(converter), 1)
     converter[1], converter[2] = parse_args(arg_dict, converter[1], converter[2])
     return converter  # type: ignore
+
+
+def parse_main_module(main_module: list) -> MainModule:
+    main_module = __regularize_layer_like_len(deepcopy(main_module), 1)
+    return main_module  # type: ignore
 
 
 def parse_layers(layers: list[list], arg_dict: ArgDict) -> list[Layer]:
