@@ -39,8 +39,6 @@ class StreamModule(nn.Module, CustomizedModuleName):
 
         super().__init__()
         self.__name = name
-        layers_info = "\n".join([f"{layer}" for layer in layers])
-        logger.debug(f"Creating {name} with layers:\n{layers_info}")
 
         def get_drop_indexes(former_list: list[Former]) -> set[int]:
             def count_former_list(former_list: list[Former]) -> dict[int, int]:
@@ -59,7 +57,7 @@ class StreamModule(nn.Module, CustomizedModuleName):
         if len(self.__drop_indexes) > 0:
             logger.warning(
                 f"layer(s) with index(es) {self.__drop_indexes} "
-                f"is/are not connected to any other layer(s) and will be dropped."
+                f"is/are not connected to any other layer(s) and will be dropped"
             )
         self.__modules = [ModuleRegister.get(m)(*a, **k) for _, m, a, k in layers]
         modules = filter(lambda m: isinstance(m, nn.Module), self.__modules)

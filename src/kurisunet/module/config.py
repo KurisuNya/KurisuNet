@@ -3,7 +3,7 @@ from typing import Any, Iterable
 
 from .utils import get_first_key, get_first_value
 
-Define = str | dict[str, Any]
+Param = str | dict[str, Any]
 Args = Iterable[Any]
 Kwargs = dict[str, Any]
 ArgDict = dict[str, Any]
@@ -14,7 +14,59 @@ MainModule = tuple[str, Args, Kwargs]
 Layer = tuple[Former, str, Args, Kwargs]
 
 
-def __regularize_layer_like_len(layer_like: list, prefix_len: int) -> list:
+def parse_input(params: list[Param], args: Args = [], kwargs: Kwargs = {}) -> ArgDict:
+    def get_param_name(param) -> str:
+        return get_first_key(param) if isinstance(param, dict) else param
+
+    def get_param_value(param) -> Any:
+        return get_first_value(param) if isinstance(param, dict) else None
+
+    def check_params_format(params):
+        def check_type(param):
+            if not isinstance(param, (str, dict)):
+                raise ValueError(f"Invalid param type: {type(param)}")
+            if isinstance(param, dict) and len(param) != 1:
+                raise ValueError("Dict in param should have only one key")
+
+        def get_first_index(lst, type):
+            for i, item in enumerate(lst):
+                if isinstance(item, type):
+                    return i
+            return len(lst)
+
+        def get_last_index(lst, type):
+            return len(lst) - 1 - get_first_index(list(reversed(lst)), type)
+
+        for param in params:
+            check_type(param)
+        if get_first_index(params, dict) < get_last_index(params, str):
+            raise ValueError("Non-default argument follows default argument")
+
+    def check_args_format(params, args, kwargs):
+        if len(args) > len(params):
+            raise ValueError(f"Expected {len(params)} positional arguments")
+        kw_list = params[len(args) :]
+        valid_keys = [get_param_name(arg) for arg in kw_list]
+        invalid_keys = set(kwargs.keys()) - set(valid_keys)
+        if invalid_keys:
+            raise ValueError(f"No parameter named {invalid_keys}")
+        valid_keys = [arg for arg in kw_list if not isinstance(arg, dict)]
+        invalid_keys = set(valid_keys) - set(kwargs.keys())
+        if invalid_keys:
+            raise ValueError(f"Argument missing for parameters {invalid_keys}")
+
+    check_params_format(params)
+    check_args_format(params, args, kwargs)
+
+    parsed_input = {get_param_name(d): get_param_value(d) for d in params}
+    for i, arg in enumerate(args):
+        parsed_input[get_param_name(params[i])] = arg
+    for key, value in kwargs.items():
+        parsed_input[key] = value
+    return parsed_input
+
+
+def __regularize_layer_like_format(layer_like: list, prefix_len: int) -> list:
     if len(layer_like) < prefix_len or len(layer_like) > prefix_len + 2:
         raise ValueError(f"Invalid format: {layer_like}")
     if len(layer_like) == prefix_len:
@@ -26,59 +78,7 @@ def __regularize_layer_like_len(layer_like: list, prefix_len: int) -> list:
     return layer_like
 
 
-def parse_input(defines: list[Define], args: Args = [], kwargs: Kwargs = {}) -> ArgDict:
-    def get_define_name(define) -> str:
-        return get_first_key(define) if isinstance(define, dict) else define
-
-    def get_default_value(define) -> Any:
-        return get_first_value(define) if isinstance(define, dict) else None
-
-    def check_define_format(define_list):
-        def check_type(define):
-            if not isinstance(define, (str, dict)):
-                raise ValueError(f"Invalid define type: {type(define)}")
-            if isinstance(define, dict) and len(define) != 1:
-                raise ValueError("Dict in define should have only one key")
-
-        def get_first_index(lst, type):
-            for i, item in enumerate(lst):
-                if isinstance(item, type):
-                    return i
-            return len(lst)
-
-        def get_last_index(lst, type):
-            return len(lst) - 1 - get_first_index(list(reversed(lst)), type)
-
-        for define in define_list:
-            check_type(define)
-        if get_first_index(define_list, dict) < get_last_index(define_list, str):
-            raise ValueError("Non-default argument follows default argument.")
-
-    def check_args_format(defines, args, kwargs):
-        if len(args) > len(defines):
-            raise ValueError(f"Expected {len(defines)} positional arguments")
-        kw_list = defines[len(args) :]
-        valid_keys = [get_define_name(arg) for arg in kw_list]
-        invalid_keys = set(kwargs.keys()) - set(valid_keys)
-        if invalid_keys:
-            raise ValueError(f"No parameter named {invalid_keys}")
-        valid_keys = [arg for arg in kw_list if not isinstance(arg, dict)]
-        invalid_keys = set(valid_keys) - set(kwargs.keys())
-        if invalid_keys:
-            raise ValueError(f"Argument missing for parameters {invalid_keys}")
-
-    check_define_format(defines)
-    check_args_format(defines, args, kwargs)
-
-    parsed_args = {get_define_name(d): get_default_value(d) for d in defines}
-    for i, arg in enumerate(args):
-        parsed_args[get_define_name(defines[i])] = arg
-    for key, value in kwargs.items():
-        parsed_args[key] = value
-    return parsed_args
-
-
-def parse_args(arg_dict: ArgDict, args: Args, kwargs: Kwargs) -> tuple[Args, Kwargs]:
+def __parse_args(arg_dict: ArgDict, args: Args, kwargs: Kwargs) -> tuple[Args, Kwargs]:
     from .register import ModuleRegister
 
     def regularize_arg(arg):
@@ -96,15 +96,17 @@ def parse_args(arg_dict: ArgDict, args: Args, kwargs: Kwargs) -> tuple[Args, Kwa
     return tuple(args), kwargs
 
 
-def parse_converter(converter: list, arg_dict: ArgDict) -> Converter:
-    converter = __regularize_layer_like_len(deepcopy(converter), 1)
-    converter[1], converter[2] = parse_args(arg_dict, converter[1], converter[2])
-    return converter  # type: ignore
+def parse_converter(converter: list, arg_dict: ArgDict) -> list[Converter]:
+    converter = [converter] if isinstance(converter[0], str) else converter
+    converter = [__regularize_layer_like_format(c, 1) for c in converter]
+    for i, (_, args, kwargs) in enumerate(converter):
+        converter[i][1], converter[i][2] = __parse_args(arg_dict, args, kwargs)
+    return list(tuple(c) for c in converter)
 
 
 def parse_main_module(main_module: list) -> MainModule:
-    main_module = __regularize_layer_like_len(deepcopy(main_module), 1)
-    return main_module  # type: ignore
+    main_module = __regularize_layer_like_format(deepcopy(main_module), 1)
+    return tuple(main_module)
 
 
 def parse_layers(layers: list[list], arg_dict: ArgDict) -> list[Layer]:
@@ -119,20 +121,20 @@ def parse_layers(layers: list[list], arg_dict: ArgDict) -> list[Layer]:
 
     def regularize_f_key(i: int, f: int) -> int:
         if f >= i:
-            raise ValueError(f"Former {f} should be less than itself {i}.")
+            raise ValueError(f"Former {f} should be less than itself {i}")
         if f >= 0:
             return f
         if i + f < 0:
-            raise ValueError(f"Former {f} is out of range.")
+            raise ValueError(f"Former {f} is out of range")
         return i + f
 
     def regularize_former(i: int, former: list[int | dict]) -> Former:
         f_dict = {get_f_key(f): get_f_value(f) for f in former}
         return [{regularize_f_key(i, k): v} for k, v in f_dict.items()]
 
-    layers = [__regularize_layer_like_len(layer, 2) for layer in deepcopy(layers)]
+    layers = [__regularize_layer_like_format(layer, 2) for layer in deepcopy(layers)]
     for i, (former, _, args, kwargs) in enumerate(layers):
         layers[i][0] = regularize_former(i + 1, to_list(former))
-        layers[i][2], layers[i][3] = parse_args(arg_dict, args, kwargs)
+        layers[i][2], layers[i][3] = __parse_args(arg_dict, args, kwargs)
 
-    return layers  # type: ignore
+    return list(tuple(layer) for layer in layers)
