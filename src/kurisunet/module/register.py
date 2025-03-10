@@ -1,7 +1,7 @@
 from copy import deepcopy
 import importlib.util
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable, Iterable
 
 from loguru import logger
 import torch.nn as nn
@@ -22,21 +22,41 @@ def register_converter(fn):
     return fn
 
 
-def get_main_module(config_path: Path | str) -> nn.Module:
-    if isinstance(config_path, str):
-        config_path = Path(config_path)
-    logger.info(f"Registering module from {get_relative_path(config_path)}")
-    config = yaml.safe_load(open(config_path))
+def get_module(
+    name: str,
+    args: Iterable[Any] = (),
+    kwargs: dict[str, Any] = {},
+    config: dict[str, Any] | Path | str | None = None,
+) -> nn.Module:
+    if config:
+        register_config(config)
+    return ModuleRegister.get(name)(*args, **kwargs)
+
+
+def get_main_module(config: dict[str, Any] | Path | str) -> nn.Module:
+    if isinstance(config, str):
+        config = Path(config)
+    if isinstance(config, Path):
+        logger.info(f"Registering module from {get_relative_path(config)}")
+        config = yaml.safe_load(open(config))
     if not isinstance(config, dict):
         raise ValueError("Invalid config type")
     if "main_module" not in config:
         raise ValueError("No main module specified")
-    register_config(config)
+
     name, args, kwargs = parse_main_module(config["main_module"])
-    return ModuleRegister.get(name)(*args, **kwargs)
+    return get_module(name, args, kwargs, config)
 
 
-def register_config(config_dict: dict[str, dict]):
+def register_config(config: dict[str, Any] | Path | str):
+    if isinstance(config, str):
+        config = Path(config)
+    if isinstance(config, Path):
+        logger.info(f"Registering module from {get_relative_path(config)}")
+        config = yaml.safe_load(open(config))
+    if not isinstance(config, dict):
+        raise ValueError("Invalid config type")
+
     def exec_module(module_name, file_path):
         spec = importlib.util.spec_from_file_location(module_name, file_path)
         spec.loader.exec_module(importlib.util.module_from_spec(spec))  # type: ignore
@@ -58,10 +78,10 @@ def register_config(config_dict: dict[str, dict]):
         for k, v in config.items():
             __register_single_config(k, v)
 
-    if "auto_register" in config_dict:
-        register_path_list([Path(x) for x in config_dict["auto_register"]])
+    if "auto_register" in config:
+        register_path_list([Path(x) for x in config["auto_register"]])
     except_keys = ["auto_register", "main_module"]
-    register(deepcopy(get_except_keys(config_dict, except_keys)))
+    register(deepcopy(get_except_keys(config, except_keys)))
 
 
 def __register_single_config(name: str, config: dict):
