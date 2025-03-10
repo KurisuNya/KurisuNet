@@ -1,5 +1,5 @@
 auto_register:
-  - ./example/simple_cnn/converter.py
+  - ./example/simple_cnn/module/converter.py
 
 Flatten:
   forward: "lambda x: x.view(x.size(0), -1)"
@@ -36,5 +36,3 @@ SimpleCNN:
     - [-1, ConvBNReLU, [256, 512]]
     - [-1, Classifier, [512, args.class_num]]
   converter: [resize_converter, [args.width]]
-
-main_module: [SimpleCNN, [3, 10, 0.5]]
