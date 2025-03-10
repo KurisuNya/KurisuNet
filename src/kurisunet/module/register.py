@@ -33,21 +33,6 @@ def get_module(
     return ModuleRegister.get(name)(*args, **kwargs)
 
 
-def get_main_module(config: dict[str, Any] | Path | str) -> nn.Module:
-    if isinstance(config, str):
-        config = Path(config)
-    if isinstance(config, Path):
-        logger.info(f"Registering module from {get_relative_path(config)}")
-        config = yaml.safe_load(open(config))
-    if not isinstance(config, dict):
-        raise ValueError("Invalid config type")
-    if "main_module" not in config:
-        raise ValueError("No main module specified")
-
-    name, args, kwargs = parse_main_module(config["main_module"])
-    return get_module(name, args, kwargs, config)
-
-
 def register_config(config: dict[str, Any] | Path | str):
     if isinstance(config, str):
         config = Path(config)
