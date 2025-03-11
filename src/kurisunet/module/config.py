@@ -11,7 +11,7 @@ ArgDict = dict[str, Any]
 Former = list[dict[int, int | str]]
 Converter = tuple[str, Args, Kwargs]
 MainModule = tuple[str, Args, Kwargs]
-Layer = tuple[Former, str, Args, Kwargs]
+Layer = tuple[Former | str, str, Args, Kwargs]
 
 
 def parse_input(params: list[Param], args: Args = [], kwargs: Kwargs = {}) -> ArgDict:
@@ -104,7 +104,16 @@ def parse_converter(converter: list, arg_dict: ArgDict) -> list[Converter]:
     return list(tuple(c) for c in converter)
 
 
-def parse_layers(layers: list[list], arg_dict: ArgDict) -> list[Layer]:
+__drop_formers = ["drop", "skip", "ignore"]
+
+
+def is_drop_former(former: Former | str) -> bool:
+    if former in __drop_formers:
+        return True
+    return False
+
+
+def regularize_former(i: int, former: list[int | dict] | int | dict) -> Former:
     def to_list(x: Any | list[Any]) -> list[Any]:
         return x if isinstance(x, list) else [x]
 
@@ -123,13 +132,18 @@ def parse_layers(layers: list[list], arg_dict: ArgDict) -> list[Layer]:
             raise ValueError(f"Former {f} is out of range")
         return i + f
 
-    def regularize_former(i: int, former: list[int | dict]) -> Former:
-        f_dict = {get_f_key(f): get_f_value(f) for f in former}
-        return [{regularize_f_key(i, k): v} for k, v in f_dict.items()]
+    f_dict = {get_f_key(f): get_f_value(f) for f in to_list(former)}
+    return [{regularize_f_key(i, k): v} for k, v in f_dict.items()]
 
+
+def parse_layers(layers: list[list], arg_dict: ArgDict) -> list[Layer]:
     layers = [__regularize_layer_like_format(layer, 2) for layer in deepcopy(layers)]
-    for i, (former, _, args, kwargs) in enumerate(layers):
-        layers[i][0] = regularize_former(i + 1, to_list(former))
+    for former, _, _, _ in layers:
+        if isinstance(former, str) and not is_drop_former(former):
+            raise ValueError(f"Invalid drop former {former}")
+    for i, (_, _, args, kwargs) in enumerate(layers):
         layers[i][2], layers[i][3] = __parse_args(arg_dict, args, kwargs)
-
+    used_layers = [l for l in layers if not is_drop_former(l[0])]
+    for i, (former, _, _, _) in enumerate(used_layers):
+        used_layers[i][0] = regularize_former(i + 1, former)
     return list(tuple(layer) for layer in layers)

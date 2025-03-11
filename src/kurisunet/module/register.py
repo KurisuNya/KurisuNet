@@ -158,4 +158,4 @@ class ModuleRegister:
         if "nn." in name:
             return getattr(nn, name.split(".")[-1])
         if name == "Output":
-            return OutputModule  # type: ignore
+            return OutputModule
