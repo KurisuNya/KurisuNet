@@ -2,7 +2,8 @@ auto_register:
   - ./example/simple_cnn/module/converter.py
 
 Flatten:
-  forward: "lambda x: x.view(x.size(0), -1)"
+  layers:
+    - [-1, "lambda x: x.view(x.size(0), -1)"]
 
 ConvBNReLU:
   args: [in_ch, out_ch, kernel_size: 3, stride: 1, padding: 1, bias: false]

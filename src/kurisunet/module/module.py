@@ -1,5 +1,5 @@
 from collections import Counter
-from typing import Any, Callable
+from typing import Any
 
 from kurisuinfo import CustomizedModuleName
 from loguru import logger
@@ -18,19 +18,6 @@ class OutputModule(nn.Module, CustomizedModuleName):
 
     def get_module_name(self) -> str:
         return "Output"
-
-
-class LambdaModule(nn.Module, CustomizedModuleName):
-    def __init__(self, name: str, forward: Callable):
-        super().__init__()
-        self.__name = name
-        self.__forward = forward
-
-    def forward(self, x):
-        return self.__forward(x)
-
-    def get_module_name(self) -> str:
-        return self.__name
 
 
 class StreamModule(nn.Module, CustomizedModuleName):
@@ -68,9 +55,16 @@ class StreamModule(nn.Module, CustomizedModuleName):
                 f"is/are not connected to any other layer(s) and will be dropped"
             )
 
-        modules = [ModuleRegister.get(m)(*a, **k) for _, m, a, k in layers]
+        def get_module(module, a, k):
+            if isinstance(module, str):
+                return ModuleRegister.get(module)(*a, **k)
+            if isinstance(module, type):
+                return module(*a, **k)
+            return lambda *args: module(*args, *a, **k)
+
+        modules = [get_module(m, a, k) for _, m, a, k in layers]
         for i, module in enumerate(filter(lambda m: isinstance(m, nn.Module), modules)):
-            self.add_module(str(i), module)
+            self.add_module(str(i), module)  # type: ignore
         modules_info = "\n".join([f"{module}" for module in modules])
         logger.debug(f"{name} is created with modules:\n{modules_info}")
 

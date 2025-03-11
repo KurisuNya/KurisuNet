@@ -8,7 +8,7 @@ import torch.nn as nn
 import yaml
 
 from .config import parse_converter, parse_input, parse_layers
-from .module import LambdaModule, OutputModule, StreamModule
+from .module import OutputModule, StreamModule
 from .utils import get_except_key, get_except_keys, get_relative_path
 
 
@@ -71,7 +71,7 @@ def register_config(config: dict[str, Any] | Path | str):
 
 def __register_single_config(name: str, config: dict):
     def get_converted_config(args, kwargs, config):
-        arg_dict = parse_input(config["args"], args, kwargs)
+        arg_dict = parse_input(config.get("args", []), args, kwargs)
         converter_list = parse_converter(config["converter"], arg_dict)
         config = get_except_key(config, "converter")
         for name, args, kwargs in converter_list:
@@ -79,40 +79,27 @@ def __register_single_config(name: str, config: dict):
             config = ConverterRegister.get(name)(*args, **kwargs)(config)
         return config
 
-    def stream_module(args, kwargs, config):
-        arg_dict = parse_input(config["args"], args, kwargs)
-        layers = parse_layers(config["layers"], arg_dict)
-        logger.debug(f"Creating {name} with layers: {layers}")
-        return StreamModule(name, layers)
-
-    def lambda_module(args, kwargs, config):
-        logger.debug(f"Creating {name} with forward: {config['forward']}")
-        return LambdaModule(name, eval(config["forward"]))
-
-    def register_module(name, config):
-        def module(args, kwargs, config):
-            if "converter" in config:
-                logger.info(f"Converting {name} config")
-                logger.debug(f"Config before conversion: {config}")
-                config = get_converted_config(args, kwargs, config)
-                logger.debug(f"Config after conversion: {config}")
-                return module(args, kwargs, config)
-            if "layers" in config:
-                return stream_module(args, kwargs, config)
-            if "forward" in config:
-                return lambda_module(args, kwargs, config)
-            raise ValueError(f"Converted config of {name} format is not recognized")
-
-        ModuleRegister.register(name, lambda *a, **k: module(a, k, config))
+    def module(args, kwargs, config):
+        if "converter" in config:
+            logger.info(f"Converting {name} config")
+            logger.debug(f"Config before conversion: {config}")
+            config = get_converted_config(args, kwargs, config)
+            logger.debug(f"Config after conversion: {config}")
+            return module(args, kwargs, config)
+        if "layers" in config:
+            arg_dict = parse_input(config.get("args", []), args, kwargs)
+            layers = parse_layers(config["layers"], arg_dict, config.get("import", []))
+            logger.debug(f"Creating {name} with layers: {layers}")
+            return StreamModule(name, layers)
+        raise ValueError(f"Converted config of {name} format is invalid")
 
     if not isinstance(config, dict):
         logger.warning(f"{name} can't be recognized as a module")
         return
-    if all(k not in config for k in ["converter", "layers", "forward"]):
+    if all(k not in config for k in ["converter", "layers"]):
         logger.warning(f"{name} can't be recognized as a module")
         return
-    config["args"] = config.get("args", [])
-    register_module(name, config)
+    ModuleRegister.register(name, lambda *a, **k: module(a, k, config))
 
 
 ModuleLike = type[nn.Module] | Callable[..., nn.Module]
@@ -155,7 +142,5 @@ class ModuleRegister:
 
     @staticmethod
     def __get_builtin_modules(name: str) -> ModuleLike | None:
-        if "nn." in name:
-            return getattr(nn, name.split(".")[-1])
         if name == "Output":
             return OutputModule
