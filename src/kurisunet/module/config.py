@@ -104,11 +104,6 @@ def parse_converter(converter: list, arg_dict: ArgDict) -> list[Converter]:
     return list(tuple(c) for c in converter)
 
 
-def parse_main_module(main_module: list) -> MainModule:
-    main_module = __regularize_layer_like_format(deepcopy(main_module), 1)
-    return tuple(main_module)
-
-
 def parse_layers(layers: list[list], arg_dict: ArgDict) -> list[Layer]:
     def to_list(x: Any | list[Any]) -> list[Any]:
         return x if isinstance(x, list) else [x]

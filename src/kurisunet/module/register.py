@@ -7,7 +7,7 @@ from loguru import logger
 import torch.nn as nn
 import yaml
 
-from .config import parse_converter, parse_input, parse_layers, parse_main_module
+from .config import parse_converter, parse_input, parse_layers
 from .module import LambdaModule, OutputModule, StreamModule
 from .utils import get_except_key, get_except_keys, get_relative_path
 
@@ -65,7 +65,7 @@ def register_config(config: dict[str, Any] | Path | str):
 
     if "auto_register" in config:
         register_path_list([Path(x) for x in config["auto_register"]])
-    except_keys = ["auto_register", "main_module"]
+    except_keys = ["auto_register"]
     register(deepcopy(get_except_keys(config, except_keys)))
 
 
