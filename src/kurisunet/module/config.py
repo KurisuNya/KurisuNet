@@ -115,14 +115,14 @@ def parse_layers(
 
         # INFO: A tricky way to import from config file
         # Use "__" to avoid conflict with imported modules
-        def module(__f, *__a, **__k) -> Callable | type:
+        def module(__f) -> Callable | type:
             for __im in __im_list:
                 exec(__im)
-            __except = ["__f", "__a", "__k", "__im", "__im_list", "__except"]
+            __except = ["__f", "__im", "__im_list", "__except"]
             __f = eval(__f, get_except_keys(locals(), __except))
             if isinstance(__f, type):
                 return __f
-            return __f(*__a, **__k)
+            return __f
 
         def get_package_name(name: str) -> str:
             if "." not in name:
@@ -135,9 +135,11 @@ def parse_layers(
                     return True
             return False
 
-        if name.startswith("lambda ") or name.startswith("lambda:"):
-            return lambda *a, **k: module(name, *a, **k)
-        if in_import_list(get_package_name(name)):
+        if (
+            name.startswith("lambda ")
+            or name.startswith("lambda:")
+            or in_import_list(get_package_name(name))
+        ):
             return module(name)
         return name
 
