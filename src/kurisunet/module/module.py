@@ -57,12 +57,13 @@ class StreamModule(nn.Module, CustomizedModuleName):
 
         def add_modules(modules: list[nn.Module] | list[Callable]):
             nn_modules = filter(lambda m: isinstance(m, nn.Module), modules)
-            for i, module in enumerate(nn_modules):
+            for i, module in enumerate(nn_modules, start=1):
                 self.add_module(str(i), module)  # type: ignore
 
         formers = [former for former, _, _, _ in layers]
         if drop_set := get_drop_set(formers):
             logger.info(f"layer(s) with index(es) {drop_set} is/are set to be dropped")
+        self.__drop_set = drop_set
         formers = get_dropped(formers, drop_set)
         modules = get_modules(layers)
         add_modules(modules)  # INFO: ensure state_dict can be loaded correctly
@@ -75,6 +76,15 @@ class StreamModule(nn.Module, CustomizedModuleName):
         index_pairs = enumerate(zip(formers, modules), start=1)
         self.__modules = {i: (f, m) for i, (f, m) in index_pairs if i not in unused_set}
         logger.debug(f"{name} is created:\n{self}")
+
+    def __remove_modules(self, remove_set: set[int]):
+        for i in remove_set:
+            m = getattr(self, str(i))
+            delattr(self, str(i))
+            logger.debug(f"module {i} is removed:\n{m}")
+
+    def remove_dropped(self):
+        self.__remove_modules(self.__drop_set)
 
     def forward(self, x):
         def get_input(former: Former, results: dict[int, Any]):
