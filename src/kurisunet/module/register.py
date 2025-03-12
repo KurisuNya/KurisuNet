@@ -75,7 +75,7 @@ def __register_single_config(name: str, config: dict):
         converter_list = parse_converter(config["converter"], arg_dict)
         config = get_except_key(config, "converter")
         for name, args, kwargs in converter_list:
-            logger.info(f"Converting {name} with args {args} and kwargs {kwargs}")
+            logger.info(f"Using {name} with args {args} and kwargs {kwargs}")
             config = ConverterRegister.get(name)(*args, **kwargs)(config)
         return config
 
