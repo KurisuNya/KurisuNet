@@ -25,7 +25,8 @@ class StreamModule(nn.Module, CustomizedModuleName):
         from .register import ModuleRegister
 
         super().__init__()
-        self.__name = name
+        self.__meta: dict[str, Any] = {}
+        self.__meta["name"] = name
 
         def get_drop_set(former_list: list):
             return {i for i, f in enumerate(former_list, start=1) if is_drop_former(f)}
@@ -56,14 +57,15 @@ class StreamModule(nn.Module, CustomizedModuleName):
             return [get_module(m, a, k) for _, m, a, k in layers]
 
         def add_modules(modules: list[nn.Module] | list[Callable]):
-            nn_modules = filter(lambda m: isinstance(m, nn.Module), modules)
+            nn_modules = list(filter(lambda m: isinstance(m, nn.Module), modules))
+            self.__meta["module_count"] = len(nn_modules)
             for i, module in enumerate(nn_modules, start=1):
                 self.add_module(str(i), module)  # type: ignore
 
         formers = [former for former, _, _, _ in layers]
         if drop_set := get_drop_set(formers):
             logger.info(f"layer(s) with index(es) {drop_set} is/are set to be dropped")
-        self.__drop_set = drop_set
+        self.__meta["drop_set"] = drop_set
         formers = get_dropped(formers, drop_set)
         modules = get_modules(layers)
         add_modules(modules)  # INFO: ensure state_dict can be loaded correctly
@@ -83,8 +85,24 @@ class StreamModule(nn.Module, CustomizedModuleName):
             delattr(self, str(i))
             logger.debug(f"module {i} is removed:\n{m}")
 
+    def __resort_modules(self):
+        index_range = range(1, self.__meta["module_count"] + 1)
+        indexes = [i for i in index_range if hasattr(self, str(i))]
+        if len(indexes) == self.__meta["module_count"]:
+            return
+        modules = [getattr(self, str(i)) for i in indexes]
+        for i, m in enumerate(modules, start=1):
+            setattr(self, str(i), m)
+        self.__meta["module_count"] = len(modules)
+        index_range = range(1, len(modules) + 1)
+        remove = set(indexes).difference(index_range)
+        for i in remove:
+            delattr(self, str(i))
+
     def remove_dropped(self):
-        self.__remove_modules(self.__drop_set)
+        self.__remove_modules(self.__meta["drop_set"])
+        self.__resort_modules()
+        self.__meta["drop_set"] = set()
 
     def forward(self, x):
         def get_input(former: Former, results: dict[int, Any]):
@@ -101,4 +119,4 @@ class StreamModule(nn.Module, CustomizedModuleName):
         return x
 
     def get_module_name(self) -> str:
-        return self.__name
+        return self.__meta["name"]

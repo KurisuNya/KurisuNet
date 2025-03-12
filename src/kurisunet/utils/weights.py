@@ -2,6 +2,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Dict, Literal
 
+from loguru import logger
 from safetensors import safe_open
 from safetensors.torch import save_file
 import torch
@@ -46,13 +47,13 @@ def convert_state_dict(
 
 
 def get_dropped_state_dict(
-    module: nn.Module, dropped_module: nn.Module, inplace: bool = False
+    module: nn.Module, inplace: bool = False
 ) -> Dict[str, torch.Tensor]:
-    if not inplace:
+    if inplace:
+        logger.warning("The input module will be modified in-place")
+    else:
         module = deepcopy(module)
     for m in module.modules():
         if isinstance(m, StreamModule):
             m.remove_dropped()
-    old = module.state_dict()
-    new = dropped_module.state_dict()
-    return convert_state_dict(old, new)
+    return module.state_dict()
