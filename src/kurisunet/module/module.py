@@ -104,14 +104,14 @@ class StreamModule(nn.Module, CustomizedModuleName):
         self.__resort_modules()
         self.__meta["drop_set"] = set()
 
-    def forward(self, x):
+    def forward(self, *x):
         def get_input(former: Former, results: dict[int, Any]):
             items = [get_first_item(f) for f in former]
             return tuple(results[k] if v == "all" else results[k][v] for k, v in items)
 
         # INFO: because of torch graph will reference to the all tensors in forward pass,
         # save all results in a dict does not increase memory usage.
-        results_dict = {0: x}
+        results_dict = {0: x[0] if len(x) == 1 else x}
         index_pairs = zip(self.__modules.keys(), self.__modules.values())
         for i, (former, module) in index_pairs:
             x = module(*get_input(former, results_dict))
