@@ -110,15 +110,16 @@ def parse_layers(
             raise ValueError(f"Invalid drop former {former}")
 
     def parse_name(name: str) -> str | Callable:
-        __im_list = deepcopy(import_list)
-        __im_list.append("import torch.nn as nn")
+        __import_list = deepcopy(import_list)
+        __import_list.append("import torch")
+        __import_list.append("import torch.nn as nn")
 
         # INFO: A tricky way to import from config file
         # Use "__" to avoid conflict with imported modules
         def module(__f) -> Callable | type:
-            for __im in __im_list:
+            for __im in __import_list:
                 exec(__im)
-            __except = ["__f", "__im", "__im_list", "__except"]
+            __except = ["__f", "__im", "__import_list", "__except"]
             __f = eval(__f, get_except_keys(locals(), __except))
             if isinstance(__f, type):
                 return __f
@@ -130,8 +131,8 @@ def parse_layers(
             return ".".join(name.split(".")[:-1])
 
         def in_import_list(name: str) -> bool:
-            for _im in __im_list:
-                if name in _im:
+            for import_str in __import_list:
+                if name in import_str:
                     return True
             return False
 
