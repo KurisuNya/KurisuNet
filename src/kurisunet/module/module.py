@@ -70,7 +70,10 @@ class StreamModule(nn.Module, CustomizedModuleName):
             )
         index_pairs = enumerate(zip(formers, modules), start=1)
         self.__modules = {i: (f, m) for i, (f, m) in index_pairs if i not in unused_set}
-        logger.debug(f"{name} is created:\n{self}")
+        if submodule_str := self.get_submodule_str():
+            logger.debug(f"{name} is created with submodules:\n{submodule_str}")
+        else:
+            logger.debug(f"{name} is created without submodules")
 
     def __remove_modules(self, remove_set: set[int]):
         for i in remove_set:
@@ -113,3 +116,14 @@ class StreamModule(nn.Module, CustomizedModuleName):
 
     def get_module_name(self) -> str:
         return self.__meta["name"]
+
+    def get_submodule_str(self) -> str:
+        lines = str(self).split("\n")[1:-1]  # remove outermost brackets
+        return "\n".join([s[2:] for s in lines])  # remove leading spaces
+
+    def __repr__(self):
+        string = super().__repr__()
+        lines = string.split("\n")
+        name = self.get_module_name()
+        lines[0] = f"{name}(" if len(lines) > 1 else f"{name}()"
+        return "\n".join(lines)

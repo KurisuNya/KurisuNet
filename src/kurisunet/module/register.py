@@ -89,7 +89,8 @@ def __register_single_config(name: str, config: dict):
         if "layers" in config:
             arg_dict = parse_input(config.get("args", []), args, kwargs)
             layers = parse_layers(config["layers"], arg_dict, config.get("import", []))
-            logger.debug(f"Creating {name} with layers: {layers}")
+            layers_str = "\n".join(str(l) for l in layers)
+            logger.debug(f"Creating {name} with layers:\n{layers_str}")
             return StreamModule(name, layers)
         raise ValueError(f"Converted config of {name} format is invalid")
 
