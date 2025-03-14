@@ -12,7 +12,7 @@ def __log_shape_hook(module, input, output):
         if isinstance(x, Tensor):
             return (
                 str(x.shape)
-                .replace("torch.Size", "Size")
+                .replace("torch.Size", "")
                 .replace("([", "(")
                 .replace("])", ")")
             )
@@ -29,7 +29,8 @@ def __log_shape_hook(module, input, output):
     input_shape = get_shape(input[0] if len(input) == 1 else input)
     output_shape = get_shape(output)
     module_name = get_name(module)
-    logger.debug(f"{module_name}: {input_shape} -> {output_shape}")
+    info = "Module: {:<20} Shape: {} -> {}"
+    logger.debug(info.format(module_name, input_shape, output_shape))
 
 
 def register_log_shape_hook(modules: Iterable[nn.Module] | Literal["all"] = "all"):
