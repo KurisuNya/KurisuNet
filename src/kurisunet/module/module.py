@@ -9,15 +9,8 @@ from .config import Former, Layer, is_drop_former
 from .utils import get_first_item, get_first_key
 
 
-class OutputModule(nn.Module, CustomizedModuleName):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, *args):
-        return args
-
-    def get_module_name(self) -> str:
-        return "Output"
+def OutputModule():
+    return lambda *args: args
 
 
 class StreamModule(nn.Module, CustomizedModuleName):

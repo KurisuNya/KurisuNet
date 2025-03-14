@@ -143,4 +143,4 @@ class ModuleRegister:
     @staticmethod
     def __get_builtin_modules(name: str) -> ModuleLike | None:
         if name == "Output":
-            return OutputModule
+            return OutputModule  # type: ignore
