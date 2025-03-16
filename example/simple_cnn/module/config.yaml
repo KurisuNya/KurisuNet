@@ -36,4 +36,5 @@ SimpleCNN:
     - [-1, ConvBNReLU, [128, 256]]
     - [-1, ConvBNReLU, [256, 512]]
     - [-1, Classifier, [512, args.class_num]]
-  converter: [resize_converter, [args.width]]
+  converters:
+    - [ResizeConverter, [args.width]]

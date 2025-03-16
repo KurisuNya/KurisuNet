@@ -8,10 +8,10 @@ from .register import (
 )
 
 __all__ = (
-    "ModuleRegister",
     "ConverterRegister",
+    "ModuleRegister",
     "get_module",
     "register_config",
-    "register_module",
     "register_converter",
+    "register_module",
 )

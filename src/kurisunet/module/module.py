@@ -15,8 +15,6 @@ def OutputModule():
 
 class StreamModule(nn.Module, CustomizedModuleName):
     def __init__(self, name: str, layers: list[Layer]):
-        from .register import ModuleRegister
-
         super().__init__()
         self.__meta: dict[str, Any] = {}
         self.__meta["name"] = name
@@ -39,28 +37,22 @@ class StreamModule(nn.Module, CustomizedModuleName):
             drop_indexes = indexes_except_last.difference(used_indexes)
             return drop_indexes
 
-        def get_modules(layers: list[Layer]):
-            def get_module(module, a, k):
-                if isinstance(module, str):
-                    return ModuleRegister.get(module)(*a, **k)
-                if isinstance(module, type):
-                    return module(*a, **k)
-                return lambda *args: module(*args, *a, **k)
-
-            return [get_module(m, a, k) for _, m, a, k in layers]
-
         def add_modules(modules: list[nn.Module] | list[Callable]):
             nn_modules = list(filter(lambda m: isinstance(m, nn.Module), modules))
             self.__meta["module_count"] = len(nn_modules)
             for i, module in enumerate(nn_modules, start=1):
                 self.add_module(str(i), module)  # type: ignore
 
+        def get_submodule_str() -> str:
+            lines = str(self).split("\n")[1:-1]  # remove outermost brackets
+            return "\n".join([s[2:] for s in lines])  # remove leading spaces
+
         formers = [former for former, _, _, _ in layers]
         if drop_set := get_drop_set(formers):
             logger.info(f"layer(s) with index(es) {drop_set} is/are set to be dropped")
         self.__meta["drop_set"] = drop_set
         formers = get_dropped(formers, drop_set)
-        modules = get_modules(layers)
+        modules = [m(*a, **k) for _, m, a, k in layers]
         add_modules(modules)  # INFO: ensure state_dict can be loaded correctly
         modules = get_dropped(modules, drop_set)
         if unused_set := get_unused_set(formers):
@@ -70,35 +62,10 @@ class StreamModule(nn.Module, CustomizedModuleName):
             )
         index_pairs = enumerate(zip(formers, modules), start=1)
         self.__modules = {i: (f, m) for i, (f, m) in index_pairs if i not in unused_set}
-        if submodule_str := self.get_submodule_str():
+        if submodule_str := get_submodule_str():
             logger.debug(f"{name} is created with submodules:\n{submodule_str}")
         else:
             logger.debug(f"{name} is created without submodules")
-
-    def __remove_modules(self, remove_set: set[int]):
-        for i in remove_set:
-            m = getattr(self, str(i))
-            delattr(self, str(i))
-            logger.debug(f"module {i} is removed:\n{m}")
-
-    def __resort_modules(self):
-        index_range = range(1, self.__meta["module_count"] + 1)
-        indexes = [i for i in index_range if hasattr(self, str(i))]
-        if len(indexes) == self.__meta["module_count"]:
-            return
-        modules = [getattr(self, str(i)) for i in indexes]
-        for i, m in enumerate(modules, start=1):
-            setattr(self, str(i), m)
-        self.__meta["module_count"] = len(modules)
-        index_range = range(1, len(modules) + 1)
-        remove = set(indexes).difference(index_range)
-        for i in remove:
-            delattr(self, str(i))
-
-    def remove_dropped(self):
-        self.__remove_modules(self.__meta["drop_set"])
-        self.__resort_modules()
-        self.__meta["drop_set"] = set()
 
     def forward(self, *x):
         def get_input(former: Former, results: dict[int, Any]):
@@ -114,12 +81,33 @@ class StreamModule(nn.Module, CustomizedModuleName):
             results_dict[i] = x
         return x
 
+    def remove_dropped(self):
+        def remove_modules(remove_set: set[int]):
+            for i in remove_set:
+                m = getattr(self, str(i))
+                delattr(self, str(i))
+                logger.debug(f"module {i} is removed:\n{m}")
+
+        def resort_modules():
+            index_range = range(1, self.__meta["module_count"] + 1)
+            indexes = [i for i in index_range if hasattr(self, str(i))]
+            if len(indexes) == self.__meta["module_count"]:
+                return
+            modules = [getattr(self, str(i)) for i in indexes]
+            for i, m in enumerate(modules, start=1):
+                setattr(self, str(i), m)
+            self.__meta["module_count"] = len(modules)
+            index_range = range(1, len(modules) + 1)
+            remove = set(indexes).difference(index_range)
+            for i in remove:
+                delattr(self, str(i))
+
+        remove_modules(self.__meta["drop_set"])
+        self.__meta["drop_set"] = set()
+        resort_modules()
+
     def get_module_name(self) -> str:
         return self.__meta["name"]
-
-    def get_submodule_str(self) -> str:
-        lines = str(self).split("\n")[1:-1]  # remove outermost brackets
-        return "\n".join([s[2:] for s in lines])  # remove leading spaces
 
     def __repr__(self):
         string = super().__repr__()

@@ -2,7 +2,7 @@ from kurisunet.module import register_converter
 
 
 @register_converter
-def resize_converter(width):
+def ResizeConverter(width):
     def make_divisible(v, divisor, min_value=None):
         if min_value is None:
             min_value = divisor

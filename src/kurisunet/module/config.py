@@ -1,6 +1,7 @@
 from copy import deepcopy
 from typing import Any, Callable, Iterable
 
+from ..constants import *
 from .utils import get_except_keys, get_first_key, get_first_value
 
 Param = str | dict[str, Any]
@@ -9,8 +10,8 @@ Kwargs = dict[str, Any]
 ArgDict = dict[str, Any]
 
 Former = list[dict[int, int | str]]
-Converter = tuple[str, Args, Kwargs]
-Layer = tuple[Former | str, str | Callable | type, Args, Kwargs]
+Converter = tuple[Callable, Args, Kwargs]
+Layer = tuple[Former | str, type | Callable, Args, Kwargs]
 
 
 def parse_input(params: list[Param], args: Args = [], kwargs: Kwargs = {}) -> ArgDict:
@@ -65,6 +66,12 @@ def parse_input(params: list[Param], args: Args = [], kwargs: Kwargs = {}) -> Ar
     return parsed_input
 
 
+def is_drop_former(former: Former | str) -> bool:
+    if former == DROP_KEY:
+        return True
+    return False
+
+
 def __regularize_layer_like_format(layer_like: list, prefix_len: int) -> list:
     if len(layer_like) < prefix_len or len(layer_like) > prefix_len + 2:
         raise ValueError(f"Invalid format: {layer_like}")
@@ -77,72 +84,78 @@ def __regularize_layer_like_format(layer_like: list, prefix_len: int) -> list:
     return layer_like
 
 
-def __parse_args(arg_dict: ArgDict, args: Args, kwargs: Kwargs) -> tuple[Args, Kwargs]:
+def __parse_str(string: str, arg_dict: ArgDict, import_list: list[str]) -> Any:
+    # INFO: A tricky way to import from config file & eval args
+    # Use "__" to avoid conflict with imported modules
+    __import_list = deepcopy(import_list)
+    __import_list.extend(BUILD_IN_IMPORT)
+    __arg_dict = arg_dict
+
+    class __Args:
+        def __init__(self, arg_dict):
+            for k, v in arg_dict.items():
+                setattr(self, k, v)
+
+    def parse(__str) -> Callable | type:
+        nonlocal __arg_dict, __Args
+        exec(f"{ARGS_KEY} = __Args(__arg_dict)")
+        for __i in __import_list:
+            exec(__i)
+        __except = ["__str", "__Args", "__arg_dict", "__i", "__import_list", "__except"]
+        return eval(__str, get_except_keys(locals(), __except))
+
+    def need_parse(string: str) -> bool:
+        def get_base(string: str) -> str:
+            if "." not in string:
+                return string
+            return ".".join(string.split(".")[:-1])
+
+        if string.startswith("lambda ") or string.startswith("lambda:"):
+            return True
+        if any(get_base(string) in each for each in __import_list + [ARGS_KEY]):
+            return True
+        return False
+
+    if string.startswith(EVAL_PREFIX):
+        return parse(string[len(EVAL_PREFIX) :])
+    if need_parse(string):
+        return parse(string)
+    return string
+
+
+def __parse_args(
+    arg_dict: ArgDict, import_list: list[str], args: Args, kwargs: Kwargs
+) -> tuple[Args, Kwargs]:
     from .register import ModuleRegister
 
-    def regularize_arg(arg):
-        if isinstance(arg, str) and arg.startswith("args."):
-            return arg_dict[arg[5:]]
-        if isinstance(arg, str) and arg.startswith("module."):
-            return ModuleRegister.get(arg[7:])
+    def parse_arg(arg):
+        if not isinstance(arg, str):
+            return arg
+        if arg.startswith(FORCE_STR_PREFIX):
+            return arg[len(FORCE_STR_PREFIX) :]
+        arg = __parse_str(arg, arg_dict, import_list)
+        if not isinstance(arg, str):
+            return arg
+        if ModuleRegister.has(arg):
+            return ModuleRegister.get(arg)
         return arg
 
     args, kwargs = deepcopy(list(args)), deepcopy(kwargs)
     for i, arg in enumerate(args):
-        args[i] = regularize_arg(arg)
+        args[i] = parse_arg(arg)
     for key, value in kwargs.items():
-        kwargs[key] = regularize_arg(value)
+        kwargs[key] = parse_arg(value)
     return tuple(args), kwargs
-
-
-def is_drop_former(former: Former | str) -> bool:
-    drop_formers = ["drop", "skip", "ignore"]
-    if former in drop_formers:
-        return True
-    return False
 
 
 def parse_layers(
     layers: list[list], arg_dict: ArgDict, import_list: list[str]
 ) -> list[Layer]:
+    from .register import ModuleRegister
+
     def check_former(former: Former):
         if isinstance(former, str) and not is_drop_former(former):
             raise ValueError(f"Invalid drop former {former}")
-
-    def parse_name(name: str) -> str | Callable:
-        __import_list = deepcopy(import_list)
-        __import_list.append("import torch")
-        __import_list.append("import torch.nn as nn")
-
-        # INFO: A tricky way to import from config file
-        # Use "__" to avoid conflict with imported modules
-        def module(__f) -> Callable | type:
-            for __im in __import_list:
-                exec(__im)
-            __except = ["__f", "__im", "__import_list", "__except"]
-            __f = eval(__f, get_except_keys(locals(), __except))
-            if isinstance(__f, type):
-                return __f
-            return __f
-
-        def get_package_name(name: str) -> str:
-            if "." not in name:
-                return name
-            return ".".join(name.split(".")[:-1])
-
-        def in_import_list(name: str) -> bool:
-            for import_str in __import_list:
-                if name in import_str:
-                    return True
-            return False
-
-        if (
-            name.startswith("lambda ")
-            or name.startswith("lambda:")
-            or in_import_list(get_package_name(name))
-        ):
-            return module(name)
-        return name
 
     def regularize_former(i: int, former: list[int | dict] | int | dict) -> Former:
         def to_list(x: Any | list[Any]) -> list[Any]:
@@ -166,20 +179,38 @@ def parse_layers(
         f_dict = {get_f_key(f): get_f_value(f) for f in to_list(former)}
         return [{regularize_f_key(i, k): v} for k, v in f_dict.items()]
 
+    def parse_module(name: str) -> type | Callable:
+        module = __parse_str(name, arg_dict, import_list)
+        if isinstance(module, str):
+            return ModuleRegister.get(module)
+        if isinstance(module, type):
+            return module
+        return lambda *a, **k: lambda *args: module(*args, *a, **k)
+
     layers = [__regularize_layer_like_format(layer, 2) for layer in deepcopy(layers)]
-    for i, (former, name, args, kwargs) in enumerate(layers):
+    for i, (former, name, a, k) in enumerate(layers):
         check_former(former)
-        layers[i][1] = parse_name(name)
-        layers[i][2], layers[i][3] = __parse_args(arg_dict, args, kwargs)
+        layers[i][1] = parse_module(name)
+        layers[i][2], layers[i][3] = __parse_args(arg_dict, import_list, a, k)
     used_layers = [l for l in layers if not is_drop_former(l[0])]
     for i, (former, _, _, _) in enumerate(used_layers):
         used_layers[i][0] = regularize_former(i + 1, former)
     return list(tuple(layer) for layer in layers)
 
 
-def parse_converter(converter: list, arg_dict: ArgDict) -> list[Converter]:
-    converter = [converter] if isinstance(converter[0], str) else converter
-    converter = [__regularize_layer_like_format(c, 1) for c in converter]
-    for i, (_, args, kwargs) in enumerate(converter):
-        converter[i][1], converter[i][2] = __parse_args(arg_dict, args, kwargs)
-    return list(tuple(c) for c in converter)
+def parse_converters(
+    converters: list, arg_dict: ArgDict, import_list: list[str]
+) -> list[Converter]:
+    from .register import ConverterRegister
+
+    def parse_converter(name: str) -> Callable:
+        converter = __parse_str(name, arg_dict, import_list)
+        if isinstance(converter, str):
+            return ConverterRegister.get(converter)
+        return converter
+
+    converters = [__regularize_layer_like_format(c, 1) for c in converters]
+    for i, (name, a, k) in enumerate(converters):
+        converters[i][0] = parse_converter(name)
+        converters[i][1], converters[i][2] = __parse_args(arg_dict, import_list, a, k)
+    return list(tuple(c) for c in converters)

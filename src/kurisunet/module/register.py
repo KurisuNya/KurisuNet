@@ -7,9 +7,10 @@ from loguru import logger
 import torch.nn as nn
 import yaml
 
-from .config import parse_converter, parse_input, parse_layers
+from ..constants import *
+from .config import parse_converters, parse_input, parse_layers, parse_converters
 from .module import OutputModule, StreamModule
-from .utils import get_except_key, get_except_keys, get_relative_path
+from .utils import get_except_key, get_relative_path
 
 
 def register_module(cls):
@@ -17,9 +18,9 @@ def register_module(cls):
     return cls
 
 
-def register_converter(fn):
-    ConverterRegister.register(fn.__name__, fn)
-    return fn
+def register_converter(_callable):
+    ConverterRegister.register(_callable.__name__, _callable)
+    return _callable
 
 
 def get_module(
@@ -47,12 +48,10 @@ def register_config(config: dict[str, Any] | Path | str):
         spec.loader.exec_module(importlib.util.module_from_spec(spec))  # type: ignore
 
     def register_path_list(path_list):
-        py_suffix = [".py"]
-        config_suffix = [".yaml", ".yml"]
-        for path in filter(lambda x: x.suffix in py_suffix, path_list):
+        for path in filter(lambda x: x.suffix in PYTHON_SUFFIX, path_list):
             logger.info(f"Registering module from {get_relative_path(path)}")
             exec_module(path.stem, path)
-        for path in filter(lambda x: x.suffix in config_suffix, path_list):
+        for path in filter(lambda x: x.suffix in CONFIG_SUFFIX, path_list):
             logger.info(f"Registering config from {get_relative_path(path)}")
             register_config(yaml.safe_load(open(path)))
         for path in filter(lambda x: x.is_dir(), path_list):
@@ -63,41 +62,44 @@ def register_config(config: dict[str, Any] | Path | str):
         for k, v in config.items():
             __register_single_config(k, v)
 
-    if "auto_register" in config:
-        register_path_list([Path(x) for x in config["auto_register"]])
-    except_keys = ["auto_register"]
-    register(deepcopy(get_except_keys(config, except_keys)))
+    if AUTO_REGISTER_KEY in config:
+        register_path_list([Path(x) for x in config[AUTO_REGISTER_KEY]])
+    register(deepcopy(get_except_key(config, AUTO_REGISTER_KEY)))
 
 
 def __register_single_config(name: str, config: dict):
     def get_converted_config(args, kwargs, config):
-        arg_dict = parse_input(config.get("args", []), args, kwargs)
-        converter_list = parse_converter(config["converter"], arg_dict)
-        config = get_except_key(config, "converter")
-        for name, args, kwargs in converter_list:
-            logger.info(f"Using {name} with args {args} and kwargs {kwargs}")
-            config = ConverterRegister.get(name)(*args, **kwargs)(config)
+        arg_dict = parse_input(config.get(ARGS_KEY, []), args, kwargs)
+        import_list = config.get(IMPORT_KEY, [])
+        converters = parse_converters(config[CONVERTERS_KEY], arg_dict, import_list)
+        config = get_except_key(config, CONVERTERS_KEY)
+        for converter, a, k in converters:
+            name = converter.__name__
+            logger.info(f"Using {name} with args {a} and kwargs {k}")
+            config = converter(*a, **k)(deepcopy(config))
         return config
 
     def module(args, kwargs, config):
-        if "converter" in config:
-            logger.info(f"Converting {name} config")
-            logger.debug(f"Config before conversion: {config}")
+        if CONVERTERS_KEY in config:
+            converter_names = [e[0] for e in config[CONVERTERS_KEY]]
+            logger.info(f"Converting {name} config with converters: {converter_names}")
+            logger.debug(f"Config before parsing: {config}")
             config = get_converted_config(args, kwargs, config)
-            logger.debug(f"Config after conversion: {config}")
+            logger.debug(f"Config after parsing: {config}")
             return module(args, kwargs, config)
-        if "layers" in config:
-            arg_dict = parse_input(config.get("args", []), args, kwargs)
-            layers = parse_layers(config["layers"], arg_dict, config.get("import", []))
+        if LAYERS_KEY in config:
+            arg_dict = parse_input(config.get(ARGS_KEY, []), args, kwargs)
+            import_list = config.get(IMPORT_KEY, [])
+            layers = parse_layers(config[LAYERS_KEY], arg_dict, import_list)
             layers_str = "\n".join(str(l) for l in layers)
             logger.debug(f"Creating {name} with layers:\n{layers_str}")
             return StreamModule(name, layers)
-        raise ValueError(f"Converted config of {name} format is invalid")
+        raise ValueError(f"Config of {name} format is invalid")
 
     if not isinstance(config, dict):
         logger.warning(f"{name} can't be recognized as a module")
         return
-    if all(k not in config for k in ["converter", "layers"]):
+    if all(k not in config for k in [CONVERTERS_KEY, LAYERS_KEY]):
         logger.warning(f"{name} can't be recognized as a module")
         return
     ModuleRegister.register(name, lambda *a, **k: module(a, k, config))
@@ -122,6 +124,10 @@ class ConverterRegister:
             raise ValueError(f"Converter {name} is not registered")
         return ConverterRegister.__converters[name]
 
+    @staticmethod
+    def has(name: str) -> bool:
+        return name in ConverterRegister.__converters
+
 
 class ModuleRegister:
     __modules = {}
@@ -142,6 +148,10 @@ class ModuleRegister:
         return ModuleRegister.__modules[name]
 
     @staticmethod
+    def has(name: str) -> bool:
+        return name in ModuleRegister.__modules
+
+    @staticmethod
     def __get_builtin_modules(name: str) -> ModuleLike | None:
-        if name == "Output":
+        if name == OUTPUT_MODULE_NAME:
             return OutputModule  # type: ignore
