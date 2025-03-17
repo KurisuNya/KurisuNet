@@ -76,7 +76,7 @@ def __register_single_config(name: str, config: dict):
         for converter, a, k in converters:
             name = converter.__name__
             logger.info(f"Using {name} with args {a} and kwargs {k}")
-            config = converter(*a, **k)(deepcopy(config))
+            config = converter(*a, **k)(deepcopy(config), deepcopy(arg_dict))
         return config
 
     def module(args, kwargs, config):

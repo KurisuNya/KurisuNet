@@ -22,7 +22,7 @@ def ResizeConverter(width):
         _in, *args = args
         return make_divisible(_in * width, 8), *args
 
-    def converter(config):
+    def converter(config, arg_dict):
         for i, layer in enumerate(config["layers"], start=1):
             if i == 1:
                 layer[2] = resize_backbone(layer[2], resize_in_ch=False)
