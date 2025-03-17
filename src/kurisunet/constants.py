@@ -8,8 +8,8 @@ ARGS_KEY = "args"
 LAYERS_KEY = "layers"
 CONVERTERS_KEY = "converters"
 
-FORCE_STR_PREFIX = "$"
-EVAL_PREFIX = "^"
+FORCE_STR_PREFIX = "~"
+EVAL_PREFIX = "$"
 DROP_KEY = "drop"
 
 BUILD_IN_IMPORT = [

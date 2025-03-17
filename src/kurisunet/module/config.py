@@ -190,7 +190,7 @@ def parse_layers(
     layers = [__regularize_layer_like_format(layer, 2) for layer in deepcopy(layers)]
     for i, (former, name, a, k) in enumerate(layers):
         check_former(former)
-        layers[i][1] = parse_module(name)
+        layers[i][1] = parse_module(name) if isinstance(name, str) else name
         layers[i][2], layers[i][3] = __parse_args(arg_dict, import_list, a, k)
     used_layers = [l for l in layers if not is_drop_former(l[0])]
     for i, (former, _, _, _) in enumerate(used_layers):
@@ -211,6 +211,6 @@ def parse_converters(
 
     converters = [__regularize_layer_like_format(c, 1) for c in converters]
     for i, (name, a, k) in enumerate(converters):
-        converters[i][0] = parse_converter(name)
+        converters[i][0] = parse_converter(name) if isinstance(name, str) else name
         converters[i][1], converters[i][2] = __parse_args(arg_dict, import_list, a, k)
     return list(tuple(c) for c in converters)
