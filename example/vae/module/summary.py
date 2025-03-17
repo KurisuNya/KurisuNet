@@ -9,7 +9,7 @@ from kurisunet.module import get_module
 if __name__ == "__main__":
     dir = Path(__file__).parent
     cfg = {
-        "path": "./config.yaml",
+        "path": "./net.yaml",
         "name": "VAE",
         "kwargs": {
             "img_size": (1, 28, 28),
