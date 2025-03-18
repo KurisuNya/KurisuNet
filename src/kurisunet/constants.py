@@ -2,6 +2,7 @@ PYTHON_SUFFIX = [".py"]
 CONFIG_SUFFIX = [".yaml", ".yml"]
 
 AUTO_REGISTER_KEY = "auto_register"
+GLOBAL_IMPORT_KEY = "global_import"
 
 IMPORT_KEY = "import"
 ARGS_KEY = "args"

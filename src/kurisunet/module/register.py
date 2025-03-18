@@ -10,7 +10,7 @@ import yaml
 from ..constants import *
 from .module import OutputModule, StreamModule
 from .types import ModuleLike
-from .utils import get_except_key, get_relative_path
+from .utils import get_except_key, get_except_keys, get_relative_path
 
 
 def register_module(cls):
@@ -58,20 +58,24 @@ def register_config(config: dict[str, Any] | Path | str):
             logger.info(f"Registering path {get_relative_path(path)}")
             register_path_list(list(path.iterdir()))
 
-    def register(config: dict):
+    def register(config: dict, global_import: list[str]):
         for k, v in config.items():
-            __register_single_config(k, v)
+            __register_single_config(k, v, global_import)
 
     if AUTO_REGISTER_KEY in config:
         register_path_list([Path(x) for x in config[AUTO_REGISTER_KEY]])
-    register(deepcopy(get_except_key(config, AUTO_REGISTER_KEY)))
+    except_keys = [AUTO_REGISTER_KEY, GLOBAL_IMPORT_KEY]
+    register(
+        deepcopy(get_except_keys(config, except_keys)),
+        deepcopy(config.get(GLOBAL_IMPORT_KEY, [])),
+    )
 
 
-def __register_single_config(name: str, config: dict):
+def __register_single_config(name: str, config: dict, global_import: list[str]):
     from .config import parse_converters, parse_converters, parse_input, parse_layers
 
     def get_converted_config(args, kwargs, config):
-        import_list = config.get(IMPORT_KEY, [])
+        import_list = config.get(IMPORT_KEY, []) + global_import
         arg_dict = parse_input(config.get(ARGS_KEY, []), import_list, args, kwargs)
         converters = parse_converters(config[CONVERTERS_KEY], arg_dict, import_list)
         config = get_except_key(config, CONVERTERS_KEY)
@@ -90,7 +94,7 @@ def __register_single_config(name: str, config: dict):
             logger.debug(f"Config after parsing: {config}")
             return module(args, kwargs, config)
         if LAYERS_KEY in config:
-            import_list = config.get(IMPORT_KEY, [])
+            import_list = config.get(IMPORT_KEY, []) + global_import
             arg_dict = parse_input(config.get(ARGS_KEY, []), import_list, args, kwargs)
             layers = parse_layers(config[LAYERS_KEY], arg_dict, import_list)
             layers_str = "\n".join(str(l) for l in layers)
