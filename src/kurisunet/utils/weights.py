@@ -19,7 +19,7 @@ def save_state_dict(
     save_file(state_dict, path, metadata=metadata)
 
 
-def load_state_dict(path: str, device="cpu") -> Dict[str, torch.Tensor]:
+def load_state_dict(path: str | Path, device="cpu") -> Dict[str, torch.Tensor]:
     with safe_open(path, "pt", device=device) as f:
         return {k: f.get_tensor(k) for k in f.keys()}
 
