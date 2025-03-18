@@ -6,35 +6,31 @@ Flatten:
     - [-1, "lambda x: x.view(x.size(0), -1)"]
 
 ConvBNReLU:
-  args: [in_ch, out_ch, kernel_size: 3, stride: 1, padding: 1, bias: false]
+  # in_ch, out_ch, kernel, stride, padding, bias
+  args: [c1, c2, k: 1, s: 1, p: 1, bias: false]
   layers:
-    - [
-        -1,
-        nn.Conv2d,
-        [args.in_ch, args.out_ch, args.kernel_size, args.stride, args.padding],
-        { bias: args.bias },
-      ]
-    - [-1, nn.BatchNorm2d, [args.out_ch]]
+    - [-1, nn.Conv2d, [c1, c2, k, s, p], { bias: bias }]
+    - [-1, nn.BatchNorm2d, [c2]]
     - [-1, nn.ReLU, { inplace: true }]
 
 Classifier:
   args: [in_ch, class_num]
   layers:
     - [-1, nn.AdaptiveAvgPool2d, [[1, 1]]]
-    - [-1, nn.Conv2d, [args.in_ch, args.in_ch, 1, 1, 0], { bias: true }]
+    - [-1, nn.Conv2d, [in_ch, in_ch, 1, 1, 0], { bias: true }]
     - [-1, nn.ReLU, { inplace: true }]
     - [-1, Flatten]
-    - [-1, nn.Linear, [args.in_ch, args.class_num]]
+    - [-1, nn.Linear, [in_ch, class_num]]
 
 SimpleCNN:
   args: [in_ch, class_num, width]
   layers:
-    - [-1, ConvBNReLU, [args.in_ch, 16]]
+    - [-1, ConvBNReLU, [in_ch, 16]]
     - [-1, ConvBNReLU, [16, 32]]
     - [-1, ConvBNReLU, [32, 64]]
     - [-1, ConvBNReLU, [64, 128]]
     - [-1, ConvBNReLU, [128, 256]]
     - [-1, ConvBNReLU, [256, 512]]
-    - [-1, Classifier, [512, args.class_num]]
+    - [-1, Classifier, [512, class_num]]
   converters:
-    - [ResizeConverter, [args.width]]
+    - [ResizeConverter, [width]]

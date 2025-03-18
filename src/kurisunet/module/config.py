@@ -1,17 +1,11 @@
 from copy import deepcopy
-from typing import Any, Callable, Iterable
+from string import ascii_letters
+from typing import Any, Callable
 
 from ..constants import *
+from .register import ConverterRegister, ModuleRegister
+from .types import ArgDict, Args, Converter, Former, Kwargs, Layer, Param
 from .utils import get_except_keys, get_first_key, get_first_value
-
-Param = str | dict[str, Any]
-Args = Iterable[Any]
-Kwargs = dict[str, Any]
-ArgDict = dict[str, Any]
-
-Former = list[dict[int, int | str]]
-Converter = tuple[Callable, Args, Kwargs]
-Layer = tuple[Former | str, type | Callable, Args, Kwargs]
 
 
 def __parse_str(string: str, arg_dict: ArgDict, import_list: list[str]) -> Any:
@@ -21,36 +15,58 @@ def __parse_str(string: str, arg_dict: ArgDict, import_list: list[str]) -> Any:
     __import_list.extend(BUILD_IN_IMPORT)
     __arg_dict = arg_dict
 
-    class __Args:
-        def __init__(self, arg_dict):
-            for k, v in arg_dict.items():
-                setattr(self, k, v)
-
     def parse(__str) -> Callable | type:
-        nonlocal __arg_dict, __Args
-        exec(f"{ARGS_KEY} = __Args(__arg_dict)")
+        for __k, __v in __arg_dict.items():
+            exec(f"{__k} = __v")
         for __i in __import_list:
             exec(__i)
-        __except = ["__str", "__Args", "__arg_dict", "__i", "__import_list", "__except"]
-        return eval(__str, get_except_keys(locals(), __except))
+        __e = ["__str", "__k", "__v", "__arg_dict", "__i", "__import_list", "__e"]
+        return eval(__str, get_except_keys(locals(), __e))
 
     def need_parse(string: str) -> bool:
         def get_base(string: str) -> str:
-            if "." not in string:
+            if not string.startswith(tuple(ascii_letters)):
                 return string
-            return ".".join(string.split(".")[:-1])
+            for symbol in ["(", "[", "."]:
+                if symbol in string:
+                    string = string.split(symbol)[0]
+            return string
 
-        if string.startswith("lambda ") or string.startswith("lambda:"):
+        def get_package(import_str: str) -> str:
+            return import_str.split(" ")[-1]
+
+        if len(string) == 0:
+            return False
+        if string.startswith(("lambda ", "lambda:")):
             return True
-        if any(get_base(string) in each for each in __import_list + [ARGS_KEY]):
+        vars = (
+            [get_package(i) for i in __import_list]
+            + list(__arg_dict.keys())
+            + BUILD_IN_KEYWORD
+        )
+        if get_base(string) in vars:
             return True
         return False
 
+    string = string.strip()
     if string.startswith(EVAL_PREFIX):
         return parse(string[len(EVAL_PREFIX) :])
     if need_parse(string):
         return parse(string)
     return string
+
+
+def __parse_arg(arg: Any, arg_dict: ArgDict, import_list: list[str]) -> Any:
+    if not isinstance(arg, str):
+        return arg
+    if arg.startswith(FORCE_STR_PREFIX):
+        return arg[len(FORCE_STR_PREFIX) :]
+    arg = __parse_str(arg, arg_dict, import_list)
+    if not isinstance(arg, str):
+        return arg
+    if ModuleRegister.has(arg):
+        return ModuleRegister.get(arg)
+    return arg
 
 
 def parse_input(
@@ -63,13 +79,8 @@ def parse_input(
         return get_first_key(param) if isinstance(param, dict) else param
 
     def get_param_value(param) -> Any:
-        def parse_default(value):
-            if not isinstance(value, str):
-                return value
-            return __parse_str(value, {}, import_list)
-
         value = get_first_value(param) if isinstance(param, dict) else None
-        return parse_default(value)
+        return __parse_arg(value, {}, import_list)
 
     def check_params_format(params):
         def check_type(param):
@@ -137,33 +148,17 @@ def __regularize_layer_like_format(layer_like: list, prefix_len: int) -> list:
 def __parse_args(
     arg_dict: ArgDict, import_list: list[str], args: Args, kwargs: Kwargs
 ) -> tuple[Args, Kwargs]:
-    from .register import ModuleRegister
-
-    def parse_arg(arg):
-        if not isinstance(arg, str):
-            return arg
-        if arg.startswith(FORCE_STR_PREFIX):
-            return arg[len(FORCE_STR_PREFIX) :]
-        arg = __parse_str(arg, arg_dict, import_list)
-        if not isinstance(arg, str):
-            return arg
-        if ModuleRegister.has(arg):
-            return ModuleRegister.get(arg)
-        return arg
-
     args, kwargs = deepcopy(list(args)), deepcopy(kwargs)
     for i, arg in enumerate(args):
-        args[i] = parse_arg(arg)
+        args[i] = __parse_arg(arg, arg_dict, import_list)
     for key, value in kwargs.items():
-        kwargs[key] = parse_arg(value)
+        kwargs[key] = __parse_arg(value, arg_dict, import_list)
     return tuple(args), kwargs
 
 
 def parse_layers(
     layers: list[list], arg_dict: ArgDict, import_list: list[str]
 ) -> list[Layer]:
-    from .register import ModuleRegister
-
     def check_former(former: Former):
         if isinstance(former, str) and not is_drop_former(former):
             raise ValueError(f"Invalid drop former {former}")
@@ -212,8 +207,6 @@ def parse_layers(
 def parse_converters(
     converters: list, arg_dict: ArgDict, import_list: list[str]
 ) -> list[Converter]:
-    from .register import ConverterRegister
-
     def parse_converter(name: str) -> Callable:
         converter = __parse_str(name, arg_dict, import_list)
         if isinstance(converter, str):

@@ -10,8 +10,8 @@ Backbone:
 Statistics:
   args: [in_dim, z_dim]
   layers:
-    - [0, nn.Linear, [args.in_dim, args.z_dim]] # mu
-    - [0, nn.Linear, [args.in_dim, args.z_dim]] # log_var
+    - [0, nn.Linear, [in_dim, z_dim]] # mu
+    - [0, nn.Linear, [in_dim, z_dim]] # log_var
     - [[1, 2], Output] # mu, log_var
 
 VAE_Encoder:
@@ -20,8 +20,8 @@ VAE_Encoder:
   args: [img_size, hid_dims, z_dim]
   layers:
     - [-1, Flatten]
-    - [-1, Backbone, [LinearReLU, "$[prod(args.img_size)] + args.hid_dims"]]
-    - [-1, Statistics, ["$args.hid_dims[-1]", args.z_dim]]
+    - [-1, Backbone, [LinearReLU, "$[prod(img_size)] + hid_dims"]]
+    - [-1, Statistics, ["hid_dims[-1]", z_dim]]
     - [-1, Reparameterize]
     - [[-1, -2], Output] # z, (mu, log_var)
 
@@ -30,14 +30,14 @@ VAE_Decoder:
     - from math import prod
   args: [img_size, hid_dims, z_dim]
   layers:
-    - [-1, Backbone, [LinearReLU, "$[args.z_dim] + args.hid_dims"]]
-    - [-1, nn.Linear, ["$args.hid_dims[-1]", $prod(args.img_size)]]
+    - [-1, Backbone, [LinearReLU, "$[z_dim] + hid_dims"]]
+    - [-1, nn.Linear, ["hid_dims[-1]", prod(img_size)]]
     - [-1, nn.Sigmoid]
-    - [-1, DeFlatten, [args.img_size]]
+    - [-1, DeFlatten, [img_size]]
 
 VAE:
   args: [img_size, encoder_dims, decoder_dims, z_dim]
   layers:
-    - [-1, VAE_Encoder, [args.img_size, args.encoder_dims, args.z_dim]]
-    - [-1: 0, VAE_Decoder, [args.img_size, args.decoder_dims, args.z_dim]]
+    - [-1, VAE_Encoder, [img_size, encoder_dims, z_dim]]
+    - [-1: 0, VAE_Decoder, [img_size, decoder_dims, z_dim]]
     - [[-1, -2: 1], Output]

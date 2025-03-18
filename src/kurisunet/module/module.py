@@ -5,7 +5,7 @@ from kurisuinfo import CustomizedModuleName
 from loguru import logger
 import torch.nn as nn
 
-from .config import Former, Layer, is_drop_former
+from .types import Former, Layer
 from .utils import get_first_item, get_first_key
 
 
@@ -15,6 +15,8 @@ def OutputModule():
 
 class StreamModule(nn.Module, CustomizedModuleName):
     def __init__(self, name: str, layers: list[Layer]):
+        from .config import is_drop_former
+
         super().__init__()
         self.__meta: dict[str, Any] = {}
         self.__meta["name"] = name

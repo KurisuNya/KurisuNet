@@ -5,7 +5,7 @@ Flatten:
 DeFlatten:
   args: [size]
   layers:
-    - [-1, "lambda x: x.view(x.size(0), *args.size)"]
+    - [-1, "lambda x: x.view(x.size(0), *size)"]
 
 Reparameterize:
   layers:
@@ -17,5 +17,5 @@ Reparameterize:
 LinearReLU:
   args: [in_dim, out_dim]
   layers:
-    - [-1, nn.Linear, [args.in_dim, args.out_dim]]
+    - [-1, nn.Linear, [in_dim, out_dim]]
     - [-1, nn.ReLU, { inplace: true }]

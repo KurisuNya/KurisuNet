@@ -8,8 +8,8 @@ import torch.nn as nn
 import yaml
 
 from ..constants import *
-from .config import parse_converters, parse_input, parse_layers, parse_converters
 from .module import OutputModule, StreamModule
+from .types import ModuleLike
 from .utils import get_except_key, get_relative_path
 
 
@@ -68,6 +68,8 @@ def register_config(config: dict[str, Any] | Path | str):
 
 
 def __register_single_config(name: str, config: dict):
+    from .config import parse_converters, parse_converters, parse_input, parse_layers
+
     def get_converted_config(args, kwargs, config):
         import_list = config.get(IMPORT_KEY, [])
         arg_dict = parse_input(config.get(ARGS_KEY, []), import_list, args, kwargs)
@@ -103,9 +105,6 @@ def __register_single_config(name: str, config: dict):
         logger.warning(f"{name} can't be recognized as a module")
         return
     ModuleRegister.register(name, lambda *a, **k: module(a, k, config))
-
-
-ModuleLike = type[nn.Module] | Callable[..., nn.Module]
 
 
 class ConverterRegister:

@@ -16,4 +16,5 @@ BUILD_IN_IMPORT = [
     "import torch",
     "import torch.nn as nn",
 ]
+BUILD_IN_KEYWORD = ["None"]
 OUTPUT_MODULE_NAME = "Output"
