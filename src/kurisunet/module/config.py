@@ -14,12 +14,62 @@ Converter = tuple[Callable, Args, Kwargs]
 Layer = tuple[Former | str, type | Callable, Args, Kwargs]
 
 
-def parse_input(params: list[Param], args: Args = [], kwargs: Kwargs = {}) -> ArgDict:
+def __parse_str(string: str, arg_dict: ArgDict, import_list: list[str]) -> Any:
+    # INFO: A tricky way to import from config file & eval args
+    # Use "__" to avoid conflict with imported modules
+    __import_list = deepcopy(import_list)
+    __import_list.extend(BUILD_IN_IMPORT)
+    __arg_dict = arg_dict
+
+    class __Args:
+        def __init__(self, arg_dict):
+            for k, v in arg_dict.items():
+                setattr(self, k, v)
+
+    def parse(__str) -> Callable | type:
+        nonlocal __arg_dict, __Args
+        exec(f"{ARGS_KEY} = __Args(__arg_dict)")
+        for __i in __import_list:
+            exec(__i)
+        __except = ["__str", "__Args", "__arg_dict", "__i", "__import_list", "__except"]
+        return eval(__str, get_except_keys(locals(), __except))
+
+    def need_parse(string: str) -> bool:
+        def get_base(string: str) -> str:
+            if "." not in string:
+                return string
+            return ".".join(string.split(".")[:-1])
+
+        if string.startswith("lambda ") or string.startswith("lambda:"):
+            return True
+        if any(get_base(string) in each for each in __import_list + [ARGS_KEY]):
+            return True
+        return False
+
+    if string.startswith(EVAL_PREFIX):
+        return parse(string[len(EVAL_PREFIX) :])
+    if need_parse(string):
+        return parse(string)
+    return string
+
+
+def parse_input(
+    params: list[Param],
+    import_list: list[str],
+    args: Args = [],
+    kwargs: Kwargs = {},
+) -> ArgDict:
     def get_param_name(param) -> str:
         return get_first_key(param) if isinstance(param, dict) else param
 
     def get_param_value(param) -> Any:
-        return get_first_value(param) if isinstance(param, dict) else None
+        def parse_default(value):
+            if not isinstance(value, str):
+                return value
+            return __parse_str(value, {}, import_list)
+
+        value = get_first_value(param) if isinstance(param, dict) else None
+        return parse_default(value)
 
     def check_params_format(params):
         def check_type(param):
@@ -82,45 +132,6 @@ def __regularize_layer_like_format(layer_like: list, prefix_len: int) -> list:
     if len(layer_like) == prefix_len + 1 and isinstance(layer_like[-1], dict):
         return layer_like[:prefix_len] + [[], layer_like[-1]]
     return layer_like
-
-
-def __parse_str(string: str, arg_dict: ArgDict, import_list: list[str]) -> Any:
-    # INFO: A tricky way to import from config file & eval args
-    # Use "__" to avoid conflict with imported modules
-    __import_list = deepcopy(import_list)
-    __import_list.extend(BUILD_IN_IMPORT)
-    __arg_dict = arg_dict
-
-    class __Args:
-        def __init__(self, arg_dict):
-            for k, v in arg_dict.items():
-                setattr(self, k, v)
-
-    def parse(__str) -> Callable | type:
-        nonlocal __arg_dict, __Args
-        exec(f"{ARGS_KEY} = __Args(__arg_dict)")
-        for __i in __import_list:
-            exec(__i)
-        __except = ["__str", "__Args", "__arg_dict", "__i", "__import_list", "__except"]
-        return eval(__str, get_except_keys(locals(), __except))
-
-    def need_parse(string: str) -> bool:
-        def get_base(string: str) -> str:
-            if "." not in string:
-                return string
-            return ".".join(string.split(".")[:-1])
-
-        if string.startswith("lambda ") or string.startswith("lambda:"):
-            return True
-        if any(get_base(string) in each for each in __import_list + [ARGS_KEY]):
-            return True
-        return False
-
-    if string.startswith(EVAL_PREFIX):
-        return parse(string[len(EVAL_PREFIX) :])
-    if need_parse(string):
-        return parse(string)
-    return string
 
 
 def __parse_args(

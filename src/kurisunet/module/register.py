@@ -69,8 +69,8 @@ def register_config(config: dict[str, Any] | Path | str):
 
 def __register_single_config(name: str, config: dict):
     def get_converted_config(args, kwargs, config):
-        arg_dict = parse_input(config.get(ARGS_KEY, []), args, kwargs)
         import_list = config.get(IMPORT_KEY, [])
+        arg_dict = parse_input(config.get(ARGS_KEY, []), import_list, args, kwargs)
         converters = parse_converters(config[CONVERTERS_KEY], arg_dict, import_list)
         config = get_except_key(config, CONVERTERS_KEY)
         for converter, a, k in converters:
@@ -88,8 +88,8 @@ def __register_single_config(name: str, config: dict):
             logger.debug(f"Config after parsing: {config}")
             return module(args, kwargs, config)
         if LAYERS_KEY in config:
-            arg_dict = parse_input(config.get(ARGS_KEY, []), args, kwargs)
             import_list = config.get(IMPORT_KEY, [])
+            arg_dict = parse_input(config.get(ARGS_KEY, []), import_list, args, kwargs)
             layers = parse_layers(config[LAYERS_KEY], arg_dict, import_list)
             layers_str = "\n".join(str(l) for l in layers)
             logger.debug(f"Creating {name} with layers:\n{layers_str}")
