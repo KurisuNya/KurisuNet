@@ -170,3 +170,15 @@ class VAE_Decoder(nn.Module):
         recon_x = torch.sigmoid(self.fc_decoder[-1](z))
 
         return recon_x
+
+
+if __name__ == "__main__":
+    from kurisuinfo import summary
+
+    module = VAE(
+        in_dim=1 * 28 * 28,
+        z_dim=10,
+        encoder_hid_dims=[512, 256, 128],
+        decoder_hid_dims=[128, 256, 512],
+    )
+    summary(module, (1, 1, 28, 28))

@@ -1,3 +1,4 @@
+from math import prod
 from pathlib import Path
 
 from kurisuinfo import summary
@@ -5,19 +6,31 @@ import torch
 
 from kurisunet.module.register import get_module
 from kurisunet.utils.weights import convert_state_dict, load_state_dict, save_state_dict
-from old_net import CNNClassifier
+from old_net import VAE
 
 
 if __name__ == "__main__":
     dir = Path(__file__).parent
     cfg = {
-        "path": "../module/config.yaml",
-        "name": "SimpleCNN",
-        "kwargs": {"in_ch": 1, "class_num": 2, "width": 0.5},
-        "input_shape": (1, 1, 128, 128),
+        "path": "../module/net.yaml",
+        "name": "VAE",
+        "kwargs": {
+            "img_size": (1, 28, 28),
+            "encoder_dims": [512, 256, 128],
+            "decoder_dims": [128, 256, 512],
+            "z_dim": 10,
+        },
+        "input_shape": (1, 1, 28, 28),
     }
 
-    old_module = CNNClassifier(**cfg["kwargs"])
+    old_kwargs = {
+        "in_dim": prod(cfg["kwargs"]["img_size"]),
+        "z_dim": cfg["kwargs"]["z_dim"],
+        "encoder_hid_dims": cfg["kwargs"]["encoder_dims"],
+        "decoder_hid_dims": cfg["kwargs"]["decoder_dims"],
+    }
+
+    old_module = VAE(**old_kwargs)
     new_module = get_module(cfg["name"], kwargs=cfg["kwargs"], config=dir / cfg["path"])
 
     torch.save(old_module.state_dict(), dir / "old_net_weights.pt")
