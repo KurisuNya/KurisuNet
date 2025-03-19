@@ -8,7 +8,12 @@ from .types import ArgDict, Args, Converter, Former, Kwargs, Layer, Param
 from .utils import get_except_keys, get_first_key, get_first_value
 
 
-def __parse_str(string: str, arg_dict: ArgDict, import_list: list[str]) -> Any:
+def __parse_str(
+    string: str,
+    arg_dict: ArgDict,
+    import_list: list[str],
+    force_eval: bool = False,
+) -> Any:
     # INFO: A tricky way to import from config file & eval args
     # Use "__" to avoid conflict with imported modules
     __import_list = deepcopy(import_list)
@@ -51,7 +56,7 @@ def __parse_str(string: str, arg_dict: ArgDict, import_list: list[str]) -> Any:
     string = string.strip()
     if string.startswith(EVAL_PREFIX):
         return parse(string[len(EVAL_PREFIX) :])
-    if need_parse(string):
+    if force_eval or need_parse(string):
         return parse(string)
     return string
 
@@ -127,6 +132,20 @@ def parse_input(
     return parsed_input
 
 
+def parse_vars(var_list: list[dict], arg_dict: ArgDict, import_list: list[str]):
+    for var in var_list:
+        if not isinstance(var, dict):
+            raise ValueError(f"Invalid var type: {type(var)}")
+        if len(var) != 1:
+            raise ValueError("Dict in var should have only one key")
+
+    return {
+        k: __parse_arg(v, arg_dict, import_list)
+        for var in var_list
+        for k, v in var.items()
+    }
+
+
 def is_drop_former(former: Former | str) -> bool:
     if former == DROP_KEY:
         return True
@@ -193,7 +212,19 @@ def parse_layers(
             return module
         return lambda *a, **k: lambda *args: module(*args, *a, **k)
 
-    layers = [__regularize_layer_like_format(layer, 2) for layer in deepcopy(layers)]
+    def parse_layers(layers: list):
+        def get_layers(layer):
+            if isinstance(layer, str):
+                return list(__parse_str(layer, arg_dict, import_list, force_eval=True))
+            return [layer]
+
+        layers_list = [get_layers(layer) for layer in layers]
+        return [layer for layers in layers_list for layer in layers]
+
+    layers = [
+        __regularize_layer_like_format(layer, 2)
+        for layer in parse_layers(deepcopy(layers))
+    ]
     for i, (former, name, a, k) in enumerate(layers):
         check_former(former)
         layers[i][1] = parse_module(name) if isinstance(name, str) else name

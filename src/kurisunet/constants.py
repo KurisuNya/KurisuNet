@@ -3,9 +3,11 @@ CONFIG_SUFFIX = [".yaml", ".yml"]
 
 AUTO_REGISTER_KEY = "auto_register"
 GLOBAL_IMPORT_KEY = "global_import"
+GLOBAL_VARS_KEY = "global_vars"
 
 IMPORT_KEY = "import"
 ARGS_KEY = "args"
+VARS_KEY = "vars"
 LAYERS_KEY = "layers"
 CONVERTERS_KEY = "converters"
 

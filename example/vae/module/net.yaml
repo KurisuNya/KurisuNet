@@ -1,11 +1,9 @@
 auto_register:
   - ./example/vae/module/module.yaml
-  - ./example/vae/module/converter.py
-
-Backbone:
-  args: [module, dims]
-  converters:
-    - [BackboneConverter]
+global_import:
+  - from itertools import pairwise
+global_vars:
+  - backbone: "lambda m, dims: [[-1, m, [i, o]] for i, o in pairwise(dims)]"
 
 Statistics:
   args: [in_dim, z_dim]
@@ -20,7 +18,7 @@ VAE_Encoder:
   args: [img_size, hid_dims, z_dim]
   layers:
     - [-1, Flatten]
-    - [-1, Backbone, [LinearReLU, "$[prod(img_size)] + hid_dims"]]
+    - "backbone('LinearReLU', [prod(img_size)] + hid_dims)"
     - [-1, Statistics, ["hid_dims[-1]", z_dim]]
     - [-1, Reparameterize]
     - [[-1, -2], Output] # z, (mu, log_var)
@@ -30,7 +28,7 @@ VAE_Decoder:
     - from math import prod
   args: [img_size, hid_dims, z_dim]
   layers:
-    - [-1, Backbone, [LinearReLU, "$[z_dim] + hid_dims"]]
+    - "backbone('LinearReLU', [z_dim] + hid_dims)"
     - [-1, nn.Linear, ["hid_dims[-1]", prod(img_size)]]
     - [-1, nn.Sigmoid]
     - [-1, DeFlatten, [img_size]]

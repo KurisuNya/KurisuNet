@@ -1,4 +1,4 @@
-from copy import deepcopy
+from copy import copy, deepcopy
 import importlib.util
 from pathlib import Path
 from typing import Any, Callable, Iterable
@@ -35,6 +35,8 @@ def get_module(
 
 
 def register_config(config: dict[str, Any] | Path | str):
+    from .config import parse_vars
+
     if isinstance(config, str):
         config = Path(config)
     if isinstance(config, Path):
@@ -58,25 +60,37 @@ def register_config(config: dict[str, Any] | Path | str):
             logger.info(f"Registering path {get_relative_path(path)}")
             register_path_list(list(path.iterdir()))
 
-    def register(config: dict, global_import: list[str]):
+    def register(config: dict, global_import: list[str], global_vars: list):
+        vars = parse_vars(global_vars, {}, global_import)
         for k, v in config.items():
-            __register_single_config(k, v, global_import)
+            __register_single_config(k, v, global_import, vars)
 
     if AUTO_REGISTER_KEY in config:
         register_path_list([Path(x) for x in config[AUTO_REGISTER_KEY]])
-    except_keys = [AUTO_REGISTER_KEY, GLOBAL_IMPORT_KEY]
+    except_keys = [AUTO_REGISTER_KEY, GLOBAL_IMPORT_KEY, GLOBAL_VARS_KEY]
     register(
         deepcopy(get_except_keys(config, except_keys)),
         deepcopy(config.get(GLOBAL_IMPORT_KEY, [])),
+        deepcopy(config.get(GLOBAL_VARS_KEY, [])),
     )
 
 
-def __register_single_config(name: str, config: dict, global_import: list[str]):
-    from .config import parse_converters, parse_converters, parse_input, parse_layers
+def __register_single_config(
+    name: str, config: dict, global_import: list[str], global_vars: dict[str, Any]
+):
+    from .config import parse_converters, parse_input, parse_layers, parse_vars
+
+    def get_import_list_arg_dict(args, kwargs, config):
+        import_list = config.get(IMPORT_KEY, []) + global_import
+        vars = copy(global_vars)
+        arg_dict = parse_input(config.get(ARGS_KEY, []), import_list, args, kwargs)
+        vars.update(arg_dict)
+        vars_dict = parse_vars(config.get(VARS_KEY, []), arg_dict, import_list)
+        vars.update(vars_dict)
+        return import_list, vars
 
     def get_converted_config(args, kwargs, config):
-        import_list = config.get(IMPORT_KEY, []) + global_import
-        arg_dict = parse_input(config.get(ARGS_KEY, []), import_list, args, kwargs)
+        import_list, arg_dict = get_import_list_arg_dict(args, kwargs, config)
         converters = parse_converters(config[CONVERTERS_KEY], arg_dict, import_list)
         config = get_except_key(config, CONVERTERS_KEY)
         for converter, a, k in converters:
@@ -94,8 +108,7 @@ def __register_single_config(name: str, config: dict, global_import: list[str]):
             logger.debug(f"Config after parsing: {config}")
             return module(args, kwargs, config)
         if LAYERS_KEY in config:
-            import_list = config.get(IMPORT_KEY, []) + global_import
-            arg_dict = parse_input(config.get(ARGS_KEY, []), import_list, args, kwargs)
+            import_list, arg_dict = get_import_list_arg_dict(args, kwargs, config)
             layers = parse_layers(config[LAYERS_KEY], arg_dict, import_list)
             layers_str = "\n".join(str(l) for l in layers)
             logger.debug(f"Creating {name} with layers:\n{layers_str}")
