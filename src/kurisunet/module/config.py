@@ -21,11 +21,11 @@ def __parse_str(
     __arg_dict = arg_dict
 
     def parse(__str) -> Callable | type:
-        for __k, __v in __arg_dict.items():
-            exec(f"{__k} = __v")
         for __i in __import_list:
             exec(__i)
-        __e = ["__str", "__k", "__v", "__arg_dict", "__i", "__import_list", "__e"]
+        for __k, __v in __arg_dict.items():
+            exec(f"{__k} = __v")
+        __e = ["__str", "__i", "__k", "__v", "__arg_dict", "__import_list", "__e"]
         return eval(__str, get_except_keys(locals(), __e))
 
     def need_parse(string: str) -> bool:
