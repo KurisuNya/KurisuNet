@@ -9,7 +9,7 @@ from kurisunet.module import get_module
 if __name__ == "__main__":
     dir = Path(__file__).parent
     cfg = {
-        "path": "./config.yaml",
+        "path": "./net.yaml",
         "name": "SimpleCNN",
         "kwargs": {"in_ch": 1, "class_num": 2, "width": 0.5},
         "input_shape": (1, 1, 128, 128),

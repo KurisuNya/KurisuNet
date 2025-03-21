@@ -4,7 +4,7 @@ Flatten:
 
 ConvBNReLU:
   # in_ch, out_ch, kernel, stride, padding, bias
-  args: [c1, c2, k: 1, s: 1, p: 1, bias: false]
+  args: [c1, c2, k: 3, s: 1, p: 1, bias: false]
   layers:
     - [-1, nn.Conv2d, [c1, c2, k, s, p], { bias: bias }]
     - [-1, nn.BatchNorm2d, [c2]]
@@ -23,7 +23,7 @@ SimpleCNN:
   import:
     - from utils import make_divisible
   args: [in_ch, class_num, width]
-  vars: [resize: "lambda ch: make_divisible(int(ch * width), 8)"]
+  vars: [resize: "lambda ch: make_divisible(int(ch * width), 4)"]
   layers:
     - [-1, ConvBNReLU, [in_ch, resize(16)]]
     - [-1, ConvBNReLU, [resize(16), resize(32)]]

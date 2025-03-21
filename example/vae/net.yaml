@@ -1,5 +1,5 @@
 auto_register:
-  - ./example/vae/module/module.yaml
+  - ./example/vae/module.yaml
 global_import:
   - from itertools import pairwise
 global_vars:
