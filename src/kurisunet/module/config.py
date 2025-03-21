@@ -1,11 +1,11 @@
-from copy import deepcopy
+from copy import copy, deepcopy
 from string import ascii_letters
-from typing import Any, Callable
+from typing import Any, Callable, Generator
 
 from ..constants import *
 from .register import ConverterRegister, ModuleRegister
 from .types import ArgDict, Args, Converter, Former, Kwargs, Layer, Param
-from .utils import get_except_keys, get_first_key, get_first_value
+from .utils import get_except_keys, get_first_item, get_first_key, get_first_value
 
 
 def __parse_str(
@@ -49,9 +49,7 @@ def __parse_str(
             + list(__arg_dict.keys())
             + BUILD_IN_KEYWORD
         )
-        if get_base(string) in vars:
-            return True
-        return False
+        return get_base(string) in vars
 
     string = string.strip()
     if string.startswith(EVAL_PREFIX):
@@ -139,11 +137,13 @@ def parse_vars(var_list: list[dict], arg_dict: ArgDict, import_list: list[str]):
         if len(var) != 1:
             raise ValueError("Dict in var should have only one key")
 
-    return {
-        k: __parse_arg(v, arg_dict, import_list)
-        for var in var_list
-        for k, v in var.items()
-    }
+    parsed_vars = {}
+    used_args = copy(arg_dict)
+    for var in var_list:
+        key, value = get_first_item(var)
+        parsed_vars[key] = __parse_arg(value, used_args, import_list)
+        used_args[key] = parsed_vars[key]
+    return parsed_vars
 
 
 def is_drop_former(former: Former | str) -> bool:
@@ -201,16 +201,8 @@ def parse_layers(
                 raise ValueError(f"Former {f} is out of range")
             return i + f
 
-        f_dict = {get_f_key(f): get_f_value(f) for f in to_list(former)}
-        return [{regularize_f_key(i, k): v} for k, v in f_dict.items()]
-
-    def parse_module(name: str) -> type | Callable:
-        module = __parse_str(name, arg_dict, import_list)
-        if isinstance(module, str):
-            return ModuleRegister.get(module)
-        if isinstance(module, type):
-            return module
-        return lambda *a, **k: lambda *args: module(*args, *a, **k)
+        f_list = [(get_f_key(f), get_f_value(f)) for f in to_list(former)]
+        return [(regularize_f_key(i, k), v) for k, v in f_list]
 
     def parse_layers(layers: list):
         def get_layers(layer):
@@ -221,17 +213,38 @@ def parse_layers(
         layers_list = [get_layers(layer) for layer in layers]
         return [layer for layers in layers_list for layer in layers]
 
+    def parse_former(former):
+        if not isinstance(former, str):
+            return former
+        if former == DROP_KEY:
+            return former
+        former = __parse_str(former, arg_dict, import_list, force_eval=True)
+        if isinstance(former, (tuple, Generator)):
+            return list(former)
+        return former
+
+    def parse_module(name: str) -> type | Callable:
+        module = __parse_str(name, arg_dict, import_list)
+        if isinstance(module, str):
+            return ModuleRegister.get(module)
+        if isinstance(module, type):
+            return module
+        return lambda *a, **k: lambda *args: module(*args, *a, **k)
+
     layers = [
         __regularize_layer_like_format(layer, 2)
         for layer in parse_layers(deepcopy(layers))
     ]
     for i, (former, name, a, k) in enumerate(layers):
-        check_former(former)
+        layers[i][0] = parse_former(former)
         layers[i][1] = parse_module(name) if isinstance(name, str) else name
         layers[i][2], layers[i][3] = __parse_args(arg_dict, import_list, a, k)
+    for former, _, _, _ in layers:
+        check_former(former)
     used_layers = [l for l in layers if not is_drop_former(l[0])]
     for i, (former, _, _, _) in enumerate(used_layers):
         used_layers[i][0] = regularize_former(i + 1, former)
+
     return list(tuple(layer) for layer in layers)
 
 

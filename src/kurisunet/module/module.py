@@ -1,12 +1,11 @@
 from collections import Counter
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 from kurisuinfo import CustomizedModuleName
 from loguru import logger
 import torch.nn as nn
 
 from .types import Former, Layer
-from .utils import get_first_item, get_first_key
 
 
 def OutputModule():
@@ -29,7 +28,7 @@ class StreamModule(nn.Module, CustomizedModuleName):
 
         def get_unused_set(former_list: list[Former]):
             def count_former_list(former_list: list[Former]) -> dict[int, int]:
-                f_list = [[get_first_key(f) for f in former] for former in former_list]
+                f_list = [[k for k, _ in former] for former in former_list]
                 results = [Counter(f) for f in f_list]
                 return sum(results, Counter())
 
@@ -71,8 +70,7 @@ class StreamModule(nn.Module, CustomizedModuleName):
 
     def forward(self, *x):
         def get_input(former: Former, results: dict[int, Any]):
-            items = [get_first_item(f) for f in former]
-            return tuple(results[k] if v == "all" else results[k][v] for k, v in items)
+            return (results[k] if v == "all" else results[k][v] for k, v in former)
 
         # INFO: because of torch graph will reference to the all tensors in forward pass,
         # save all results in a dict does not increase memory usage.
