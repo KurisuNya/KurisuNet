@@ -5,8 +5,6 @@ from typing import Any, Callable, Iterable
 from loguru import logger
 import yaml
 
-from kurisunet.config.module.converters import parse_converters
-
 from ..basic.types import Env
 from ..basic.utils import (
     get_except_key,
@@ -16,7 +14,14 @@ from ..basic.utils import (
     to_path,
     to_relative_path,
 )
-from ..config.module import get_imports_env, get_input_env, get_vars_env, parse_layers
+from ..config.module import (
+    get_imports_env,
+    get_input_env,
+    get_vars_env,
+    parse_converters,
+    parse_layers,
+)
+from ..config.module.converters import parse_converters
 from ..config.types import CustomModule
 from ..constants import *
 from ..net.module import PipelineModule
