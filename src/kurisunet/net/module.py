@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Any, Callable, Iterable, cast
 
 from loguru import logger

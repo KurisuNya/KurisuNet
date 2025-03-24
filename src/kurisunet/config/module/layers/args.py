@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from ....basic.types import Env
 from ...types import Args, Kwargs, LayerArgs, LayerKwargs
 from ...utils import eval_string

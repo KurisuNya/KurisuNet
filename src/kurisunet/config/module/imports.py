@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import ast
 from ast import Import, ImportFrom
 from typing import Any, cast

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from copy import copy, deepcopy
 from pathlib import Path
 from typing import Any, Callable, Iterable
@@ -89,7 +87,6 @@ LazyConfig = dict[str, Any] | Callable[..., dict[str, Any]]
 
 
 def __convert_single_config(config: dict[str, Any], env: Env) -> LazyConfig:
-
     def pipeline(*args: Any, **kwargs: Any):
         registered_modules = lambda env: ModuleRegister.get_env()
         registered_converters = lambda env: ModuleRegister.get_env()

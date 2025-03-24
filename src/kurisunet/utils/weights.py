@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from copy import deepcopy
 from pathlib import Path
 from typing import Literal
@@ -34,7 +32,6 @@ def convert_state_dict(
     new_state_dict: dict[str, torch.Tensor],
     strategy: ConvertStrategy = "instance_order",
 ) -> dict[str, torch.Tensor]:
-
     def instance_order_key_map(old_state_dict, new_state_dict) -> dict[str, str]:
         if len(old_state_dict) != len(new_state_dict):
             raise ValueError("Length of state dicts must be equal")

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from abc import abstractmethod
 from typing import Any, Callable, TypeVar, TypedDict, Protocol, runtime_checkable
 

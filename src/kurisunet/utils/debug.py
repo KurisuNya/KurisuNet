@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Iterable, Literal
 
 from kurisuinfo import CustomizedModuleName
@@ -9,7 +7,6 @@ import torch.nn as nn
 
 
 def __log_shape_hook(module, input, output):
-
     def get_shape(x):
         if isinstance(x, Tensor):
             return (
