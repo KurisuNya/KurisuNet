@@ -4,7 +4,7 @@ from pathlib import Path
 from kurisuinfo import summary
 import torch
 
-from kurisunet.module.register import get_module
+from kurisunet import get_module
 from kurisunet.utils.weights import convert_state_dict, load_state_dict, save_state_dict
 from old_net import CNNClassifier
 

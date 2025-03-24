@@ -20,7 +20,7 @@ Classifier:
     - [-1, nn.Linear, [in_ch, class_num]]
 
 SimpleCNN:
-  import:
+  imports:
     - from utils import make_divisible
   args: [in_ch, class_num, width]
   vars: [resize: "lambda ch: make_divisible(int(ch * width), 4)"]

@@ -3,7 +3,7 @@ from pathlib import Path
 from kurisuinfo import summary
 from loguru import logger
 
-from kurisunet.module import get_module
+from kurisunet import get_module
 
 
 if __name__ == "__main__":

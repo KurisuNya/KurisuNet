@@ -1,6 +1,6 @@
 auto_register:
   - ./example/vae/module.yaml
-global_import:
+global_imports:
   - from itertools import pairwise
 global_vars:
   - backbone: "lambda m, dims: [[-1, m, [i, o]] for i, o in pairwise(dims)]"
@@ -13,7 +13,7 @@ Statistics:
     - [[1, 2], Output] # mu, log_var
 
 VAE_Encoder:
-  import:
+  imports:
     - from math import prod
   args: [img_size, hid_dims, z_dim]
   layers:
@@ -24,7 +24,7 @@ VAE_Encoder:
     - [[-1, -2], Output] # z, (mu, log_var)
 
 VAE_Decoder:
-  import:
+  imports:
     - from math import prod
   args: [img_size, hid_dims, z_dim]
   layers:

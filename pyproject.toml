@@ -7,7 +7,7 @@ dependencies = [
     "pyyaml",
     "loguru",
     "torch>=2.0.0",
-    "kurisuinfo>=0.2.1",
+    "kurisuinfo>=0.2.3",
     "safetensors",
 ]
 readme = "README.md"
@@ -19,7 +19,9 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dev-dependencies = []
+dev-dependencies = [
+    "pytest>=8.3.5",
+]
 
 [tool.hatch.metadata]
 allow-direct-references = true
