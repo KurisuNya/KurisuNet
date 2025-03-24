@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from copy import copy, deepcopy
 from pathlib import Path
 from typing import Any, Callable, Iterable
