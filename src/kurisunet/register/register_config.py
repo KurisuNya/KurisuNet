@@ -94,8 +94,11 @@ def __convert_single_config(config: dict[str, Any], env: Env) -> LazyConfig:
         local_env = _pipeline_merge_env(pipeline(*args, **kwargs), env)
         converters = parse_converters(config[CONVERTERS_KEY], local_env)
         converted = get_except_key(config, CONVERTERS_KEY)
+        logger.debug(f"Converting {converted} with converters")
+        logger.debug(f"Config before: {converted}")
         for c in converters:
             converted = c["converter"](deepcopy(converted), *c["args"], **c["kwargs"])
+            logger.debug(f"Config after: {converted}")
         return converted
 
     return convert
@@ -136,5 +139,10 @@ class LazyModule:
         if is_env_conflict(buffers, params):
             raise ValueError("Buffers and params should not have same key")
         env = _pipeline_merge_env(pipeline_after(), merge_envs((env, buffers, params)))
+
+        layers_str = [str(layer) for layer in c[LAYERS_KEY]]
+        logger.debug(f"{self.__name} layers before parsing:\n{'\n'.join(layers_str)}")
         layers = parse_layers(c[LAYERS_KEY], env)
+        layers_str = [str(layer) for layer in layers]
+        logger.debug(f"{self.__name} layers after parsing:\n{'\n'.join(layers_str)}")
         return PipelineModule(self.__name, layers, buffers=buffers, params=params)
