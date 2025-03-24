@@ -140,9 +140,9 @@ class LazyModule:
             raise ValueError("Buffers and params should not have same key")
         env = _pipeline_merge_env(pipeline_after(), merge_envs((env, buffers, params)))
 
-        layers_str = [str(layer) for layer in c[LAYERS_KEY]]
-        logger.debug(f"{self.__name} layers before parsing:\n{'\n'.join(layers_str)}")
+        layers_str = "\n".join(str(layer) for layer in c[LAYERS_KEY])
+        logger.debug(f"{self.__name} layers before parsing:\n{layers_str}")
         layers = parse_layers(c[LAYERS_KEY], env)
-        layers_str = [str(layer) for layer in layers]
-        logger.debug(f"{self.__name} layers after parsing:\n{'\n'.join(layers_str)}")
+        layers_str = "\n".join(str(layer) for layer in c[LAYERS_KEY])
+        logger.debug(f"{self.__name} layers after parsing:\n{layers_str}")
         return PipelineModule(self.__name, layers, buffers=buffers, params=params)

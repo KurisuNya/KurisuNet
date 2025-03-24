@@ -1,0 +1,33 @@
+Conv:
+  imports:
+    - from utils import autopad
+  # in_ch, out_ch, kernel, stride, padding, dilation, groups, act
+  args: [c1, c2, k: 1, s: 1, p: None, g: 1, d: 1, act: nn.SiLU]
+  layers:
+    - [-1, nn.Conv2d, [c1, c2, k, s, "autopad(k, p, d)", d, g], { bias: False }]
+    - [-1, nn.BatchNorm2d, [c2]]
+    - [-1, act]
+
+Bottleneck:
+  args: [c1, c2, shortcut: True, g: 1, k: "(3, 3)", e: 0.5]
+  vars:
+    - hid_c: int(c2 * e)
+    - add: shortcut and c1 == c2
+  layers:
+    - [-1, Conv, [c1, hid_c, "k[0]", 1]]
+    - [-1, Conv, [hid_c, c2, "k[1]", 1], { g: g }]
+    - [[0, -1], "lambda x, y: x + y if add else y"]
+
+C2f:
+  args: [c1, c2, n: 1, shortcut: True, g: 1, e: 0.5]
+  vars:
+    - hid_c: int(c2 * e)
+    - bottleneck_args: "[hid_c, hid_c, shortcut, g, ((3, 3), (3, 3)), 1]"
+    - bottleneck_former: "lambda i: {-1: 1} if i == 0 else -1"
+    - cat_former: "[{-n-1: 0}, {-n-1: 1}] + list(range(-n, 0))"
+  layers:
+    - [-1, Conv, [c1, hid_c * 2, 1, 1]]
+    - [-1, "lambda x: x.chunk(2, 1)"]
+    - "[[bottleneck_former(i), Bottleneck, bottleneck_args] for i in range(n)]"
+    - [cat_former, "lambda *x: torch.cat(x, 1)"]
+    - [-1, Conv, [hid_c * (2 + n), c2, 1]]
