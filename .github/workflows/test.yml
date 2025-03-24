@@ -12,7 +12,12 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
-        pytorch-version: ["2.0", "2.1", "2.2"]
+        pytorch-version: ["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2,6"]
+        exclude:
+          - python-version: 3.12
+            pytorch-version: 2.0
+          - python-version: 3.12
+            pytorch-version: 2.1
 
     steps:
     - uses: actions/checkout@v2
@@ -24,7 +29,7 @@ jobs:
       run: |
         python -m pip install --upgrade uv
         uv pip install --system pytest pytest-cov
-        uv pip install --system torch==${{ matrix.pytorch-version }} pyyaml loguru kurisuinfo safetensors
+        uv pip install --system torch==${{ matrix.pytorch-version }} pyyaml loguru kurisuinfo safetensors -e file:.
     - name: pytest
       run: |
         pytest --cov=src
