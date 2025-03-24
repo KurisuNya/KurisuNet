@@ -33,7 +33,6 @@ class TestParseLayerFrom(unittest.TestCase):
             ((1, ALL_FROM), (2, 3)),
             ((1, ALL_FROM), (2, ALL_FROM)),
         ]
-        __import__("pprint").pprint(expected)
         for layer_from, expected in zip(layer_from, expected):
             self.assertEqual(parse_layer_from(layer_from, None), expected)
 

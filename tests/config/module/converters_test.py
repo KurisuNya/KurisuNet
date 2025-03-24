@@ -25,7 +25,6 @@ class TestParseLayers(unittest.TestCase):
         converters = parse_converters(converters, env)
 
         for c, e in zip(converters, expected):
-            __import__("pprint").pprint((input, c["converter"], c["args"], c["kwargs"]))
             self.assertEqual(c["converter"](input, *c["args"], **c["kwargs"]), e)
 
 
