@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12"]
-        pytorch-version: ["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2,6"]
+        pytorch-version: ["2.0", "2.1", "2.2", "2.3", "2.4", "2.5", "2.6"]
         exclude:
           - python-version: 3.12
             pytorch-version: 2.0
