@@ -62,7 +62,6 @@ class PipelineModule(nn.Module):
         params: dict[str, Any] | None = None,
     ):
         """Real initialization of the pipeline module."""
-        super().__init__()
         self.__meta: ModuleMeta = {"name": name, "drop_set": set()}
         self.__register_buffers(buffers or {})
         self.__register_params(params or {})

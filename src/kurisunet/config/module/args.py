@@ -70,7 +70,6 @@ def _get_input_arg_dict(
 
 
 def _get_arg_dict_env(arg_dict: ArgDict, env: Env) -> Env:
-    """Get the environment from the argument dictionary."""
     return {
         key: eval_string(value, env) if isinstance(value, str) else value
         for key, value in arg_dict.items()
