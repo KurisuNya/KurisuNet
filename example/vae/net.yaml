@@ -39,3 +39,4 @@ VAE:
     - [-1, VAE_Encoder, [img_size, encoder_dims, z_dim]]
     - [-1: 0, VAE_Decoder, [img_size, decoder_dims, z_dim]]
     - [[-1, -2: 1], Output]
+    - [-1, "lambda x: x if self.training else x[0]"] # z, (mu, log_var) / z

@@ -4,8 +4,6 @@ from kurisuinfo import summary
 from loguru import logger
 
 from kurisunet import get_module
-from kurisunet.utils.weights import load_state_dict
-
 
 if __name__ == "__main__":
     dir = Path(__file__).parent
@@ -22,10 +20,5 @@ if __name__ == "__main__":
     }
 
     module = get_module(cfg["name"], kwargs=cfg["kwargs"], config=dir / cfg["path"])
-    module_summary = str(summary(module, cfg["input_shape"], verbose=0))
-    logger.info(f"Summary of {cfg['name']}:\n{module_summary}")
-
-    state_dict = load_state_dict(dir / "weights" / "new_net_weights.pt")
-    module.load_state_dict(state_dict)
     module_summary = str(summary(module, cfg["input_shape"], verbose=0))
     logger.info(f"Summary of {cfg['name']}:\n{module_summary}")
