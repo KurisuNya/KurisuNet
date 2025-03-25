@@ -133,13 +133,21 @@ class LazyModule:
             input = lambda env: get_input_env(c.get(ARGS_KEY, []), args, kwargs, env)
             return [registered, import_, input]
 
+        def pipeline_init():
+            module = PipelineModule()
+            init = lambda env: module.get_env()
+            return module, [init]
+
         def pipeline_after():
             vars = lambda env: get_vars_env(c.get(VARS_KEY, []), env)
             return [vars]
 
         env = _pipeline_merge_env(pipeline_before(), self.__global_env)
+        module, init_pipeline = pipeline_init()
+        env = _pipeline_merge_env(init_pipeline, env)
+
         buffers = get_vars_env(c.get(BUFFERS_KEY, []), env)
-        params = get_vars_env(c.get(PARAMS_KEY, []), env)
+        params = get_vars_env(c.get(PARAMS_KEY, []), merge_envs((env, buffers)))
         if is_env_conflict(buffers, params):
             raise ValueError("Buffers and params should not have same key")
         env = _pipeline_merge_env(pipeline_after(), merge_envs((env, buffers, params)))
@@ -149,4 +157,6 @@ class LazyModule:
         layers = parse_layers(c[LAYERS_KEY], env)
         layers_str = "\n".join(str(layer) for layer in c[LAYERS_KEY])
         logger.debug(f"{self.__name} layers after parsing:\n{layers_str}")
-        return PipelineModule(self.__name, layers, buffers=buffers, params=params)
+
+        module.init(self.__name, layers, buffers=buffers, params=params)
+        return module

@@ -3,6 +3,7 @@ from typing import Any, Callable, Iterable, cast
 from loguru import logger
 import torch.nn as nn
 
+from ..basic.types import Env
 from ..config.types import FinalLayer, FromTuple
 from ..constants import ALL_FROM
 from .types import ModuleMeta
@@ -46,14 +47,21 @@ class PipelineModule(nn.Module):
                 self.__meta["drop_set"].add(module_index)
             self.add_module(str(module_index), module)
 
-    def __init__(
+    def __init__(self):
+        """Lazy initialization of the pipeline module."""
+        super().__init__()
+
+    def get_env(self) -> Env:
+        return {"self": self}
+
+    def init(
         self,
         name: str,
         layers: tuple[FinalLayer, ...],
         buffers: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
     ):
-        """Initialize the pipeline module with custom name"""
+        """Real initialization of the pipeline module."""
         super().__init__()
         self.__meta: ModuleMeta = {"name": name, "drop_set": set()}
         self.__register_buffers(buffers or {})
@@ -91,8 +99,8 @@ class PipelineModule(nn.Module):
         # save all results in a dict does not increase memory usage.
         results_dict = {0: auto_unpack(x)}
         index_pairs = zip(self.__modules.keys(), self.__modules.values())
-        for i, (former, module) in index_pairs:
-            x = module(*get_input(former, results_dict))
+        for i, (from_, module) in index_pairs:
+            x = module(*get_input(from_, results_dict))
             results_dict[i] = x
         return x
 
