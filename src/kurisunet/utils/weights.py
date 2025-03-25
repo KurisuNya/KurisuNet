@@ -54,5 +54,5 @@ def get_dropped_state_dict(
         module = deepcopy(module)
     for m in module.modules():
         if isinstance(m, PipelineModule):
-            m.drop()
+            m.drop(resort=True)
     return module.state_dict()
