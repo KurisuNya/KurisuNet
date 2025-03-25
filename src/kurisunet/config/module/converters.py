@@ -9,8 +9,6 @@ from .layers.args import parse_args, parse_kwargs
 
 def __check_converters(converters: Any) -> None:
     def check_converter(converter: Any):
-        if isinstance(converter, str):
-            return
         if len(converter) < 1:
             raise ValueError(f"Converter should have at least two items {converter}")
         if len(converter) > 3:

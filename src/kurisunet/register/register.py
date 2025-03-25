@@ -51,11 +51,17 @@ class ConverterRegister:
         """Check if a converter is registered."""
         return name in ConverterRegister.__converters
 
+    @staticmethod
+    def clear():
+        """Clear the registered converters."""
+        ConverterRegister.__converters.clear()
+
 
 class ModuleRegister:
     """Register for modules."""
 
-    __modules: dict[str, ParsedModule] = {OUTPUT_MODULE_NAME: OutputModule}
+    __builtins: dict[str, ParsedModule] = {OUTPUT_MODULE_NAME: OutputModule}
+    __modules: dict[str, ParsedModule] = copy(__builtins)
 
     @staticmethod
     def register(name: str, module: ParsedModule):
@@ -81,3 +87,8 @@ class ModuleRegister:
     def has(name: str) -> bool:
         """Check if a module is registered."""
         return name in ModuleRegister.__modules
+
+    @staticmethod
+    def clear():
+        """Clear the registered modules."""
+        ModuleRegister.__modules = copy(ModuleRegister.__builtins)

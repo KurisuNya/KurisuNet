@@ -54,7 +54,7 @@ def get_module(
 
 
 def register_config(config: dict[str, Any] | Path | str):
-    if not isinstance(config, dict):
+    if isinstance(config, (str, Path)):
         config = to_path(config)
         logger.info(f"Registering config from {to_relative_path(config)}")
         config = yaml.safe_load(config.read_text())
