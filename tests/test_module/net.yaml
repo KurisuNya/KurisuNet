@@ -1,0 +1,45 @@
+auto_register:
+  - ./tests/test_module/module.yaml
+global_imports:
+  - from itertools import pairwise
+global_vars:
+  - backbone: "lambda m, dims: [[-1, m, [i, o]] for i, o in pairwise(dims)]"
+
+Statistics:
+  args: [in_dim, z_dim]
+  layers:
+    - [0, nn.Linear, [in_dim, z_dim]] # mu
+    - [0, nn.Linear, [in_dim, z_dim]] # log_var
+    - [[1, 2], Output] # mu, log_var
+
+VAE_Encoder:
+  imports:
+    - from math import prod
+  args: [img_size, hid_dims, z_dim]
+  layers:
+    - [-1, Flatten]
+    - "backbone('LinearReLU', [prod(img_size)] + hid_dims)"
+    - [-1, Statistics, ["hid_dims[-1]", z_dim]]
+    - [-1, Reparameterize]
+    - [[-1, -2], Output] # z, (mu, log_var)
+
+VAE_Decoder:
+  imports:
+    - from math import prod
+  args: [img_size, hid_dims, z_dim]
+  layers:
+    - "backbone('LinearReLU', [z_dim] + hid_dims)"
+    - [-1, nn.Linear, ["hid_dims[-1]", prod(img_size)]]
+    - [-1, nn.Sigmoid]
+    - [-1, DeFlatten, [img_size]]
+
+VAE:
+  imports:
+    - from tests.test_module.converter import converter
+  args: [img_size, encoder_dims, decoder_dims, z_dim]
+  layers:
+    - [-1, VAE_Encoder, [img_size, encoder_dims, z_dim]]
+    - [-1: 0, VAE_Decoder, [img_size, decoder_dims, z_dim]]
+    - [[-1, -2: 1], Output]
+  converters:
+    - ["converter"]

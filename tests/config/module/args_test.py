@@ -5,6 +5,7 @@ from kurisunet.config.module.args import (
     _format_params,
     _get_arg_dict_env,
     _get_input_arg_dict,
+    get_input_env,
 )
 from kurisunet.constants import STR_PREFIX
 
@@ -34,6 +35,7 @@ class TestCheckParams(unittest.TestCase):
 
     def test_valid_params(self):
         valid_params = [
+            ["a", "b"],
             ["a", "b", {"c": 3}],
             ["a", "b", ("c", 3)],
             ["a", {"b": 2}, ("c", 3)],
@@ -112,6 +114,43 @@ class TestGetInputArgDict(unittest.TestCase):
         kwargs = {"d": 1}
         with self.assertRaises(ValueError):
             _get_input_arg_dict(params, args, kwargs)
+
+
+class TestGetInputEnv(unittest.TestCase):
+    def test_get_input_env(self):
+        params = ("a", "b", ("c", 3), ("d", 4))
+        args = (1, "arg2")
+        kwargs = {"c": 1, "d": "kwarg2 + 1"}
+        expected = {"a": 1, "b": "arg2", "c": 1, "d": 5}
+        env = {"arg2": "arg2", "kwarg2": 4}
+        self.assertEqual(get_input_env(params, args, kwargs, env), expected)
+
+    def test_more_args_than_params(self):
+        params = ("a", "b", ("c", 3))
+        args = (1, "arg2", "arg3", "arg4")
+        with self.assertRaises(ValueError):
+            get_input_env(params, args, {})
+
+    def test_missing_kwargs(self):
+        params = ("a", "b", ("c", 3))
+        args = (1,)
+        kwargs = {"c": 1}
+        with self.assertRaises(ValueError):
+            get_input_env(params, args, kwargs)
+
+    def test_already_signed_kwargs(self):
+        params = ("a", "b", ("c", 3))
+        args = (1, "arg2")
+        kwargs = {"b": 2}
+        with self.assertRaises(ValueError):
+            get_input_env(params, args, kwargs)
+
+    def test_invalid_kwargs(self):
+        params = ("a", "b", ("c", 3))
+        args = (1, "arg2")
+        kwargs = {"d": 1}
+        with self.assertRaises(ValueError):
+            get_input_env(params, args, kwargs)
 
 
 if __name__ == "__main__":

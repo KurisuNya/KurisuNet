@@ -1,0 +1,21 @@
+Flatten:
+  layers:
+    - [-1, "lambda x: x.view(x.size(0), -1)"]
+
+DeFlatten:
+  args: [size]
+  layers:
+    - [-1, "lambda x: x.view(x.size(0), *size)"]
+
+Reparameterize:
+  layers:
+    # input: (mu, log_var)
+    - [0: 1, "lambda log_var: torch.exp(0.5 * log_var)"] # std
+    - [-1, "lambda std: torch.randn_like(std)"] # eps
+    - [[-1, -2, 0: 0], "lambda eps, std, mu: eps.mul(std).add_(mu)"] # z
+
+LinearReLU:
+  args: [in_dim, out_dim]
+  layers:
+    - [-1, nn.Linear, [in_dim, out_dim]]
+    - [-1, nn.ReLU, { inplace: true }]

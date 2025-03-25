@@ -176,6 +176,24 @@ class TestRegularizeLayerFrom(unittest.TestCase):
         )
         self.assertEqual(result, expected)
 
+        invalid: list[list[FinalLayer]] = [
+            [
+                {"from": ((-2, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+                {"from": ((-1, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+            ],
+            [
+                {"from": ((-1, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+                {"from": ((2, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+            ],
+            [
+                {"from": ((-1, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+                {"from": DROP_FROM, "module": Module, "args": (), "kwargs": {}},
+            ],
+        ]
+        for layers in invalid:
+            with self.assertRaises(ValueError):
+                regularize_layer_from(layers)
+
 
 if __name__ == "__main__":
     unittest.main()

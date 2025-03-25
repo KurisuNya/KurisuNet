@@ -36,6 +36,7 @@ class TestParseModule(unittest.TestCase):
             None,
             "invalid_module",
             "lambda x: x + n + m",
+            "1 + 1",
         ]
         for module in invalid_modules:
             with self.assertRaises((ValueError, NameError)):

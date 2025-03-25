@@ -40,6 +40,7 @@ class TestParseLayerFrom(unittest.TestCase):
         invalid_layer_from = [
             {},
             {1: "invalid"},
+            {1: 1.0},
             {"a": 1},
             {1: 2, 3: 4},
             [],
@@ -86,6 +87,7 @@ class TestParseLayerFrom(unittest.TestCase):
             "{1: 2, 3: 4}",
             "list(range(2)) + [{4: 'invalid'}]",
             "list(range(n)) + ['test']",
+            "'invalid'",
         ]
         env = {"n": 2}
         for layer_from in invalid_layer_from:

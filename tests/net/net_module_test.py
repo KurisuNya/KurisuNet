@@ -126,6 +126,18 @@ class TestPipelineModule(unittest.TestCase):
         input = torch.randn(1, 3, 224, 224)
         self.assertEqual(module(input).shape, (1, 16, 224, 224))
 
+        module = PipelineModule("ConvBNReLU", conv_bn_relu)
+        module.drop(resort=True)
+        module_str = (
+            "ConvBNReLU(\n"
+            "  (1): Conv2d(3, 16, kernel_size=(1, 1), stride=(1, 1), bias=False)\n"
+            "  (2): SiLU()\n"
+            ")"
+        )
+        self.assertEqual(str(module), module_str)
+        input = torch.randn(1, 3, 224, 224)
+        self.assertEqual(module(input).shape, (1, 16, 224, 224))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,10 @@
 import unittest
 
-from kurisunet.config.module.imports import _check_imports, _get_imports_env
+from kurisunet.config.module.imports import (
+    _check_imports,
+    _get_imports_env,
+    get_imports_env,
+)
 
 valid_imports = [
     # basic import
@@ -43,9 +47,11 @@ class TestCheckImports(unittest.TestCase):
             "import os,",
             "form os import path, open",
             "1 + 1",
+            "if name == '__main__':",
         ]
-        with self.assertRaises(ValueError):
-            _check_imports(imports)
+        for import_ in imports:
+            with self.assertRaises(ValueError):
+                _check_imports([import_])
 
     def test_duplicate_imports(self):
         imports = ["import os.path as path", "from os.path import path"]
@@ -57,6 +63,9 @@ class TestGetImportsEnv(unittest.TestCase):
     def test_get_imports_env(self):
         for import_, expected in valid_imports:
             names = {name for name in _get_imports_env([import_]).keys()}
+            self.assertEqual(names, expected)
+        for import_, expected in valid_imports:
+            names = {name for name in get_imports_env([import_]).keys()}
             self.assertEqual(names, expected)
 
 

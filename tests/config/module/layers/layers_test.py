@@ -7,6 +7,19 @@ from kurisunet.constants import ALL_FROM
 
 
 class TestParseLayers(unittest.TestCase):
+    def test_invalid_layers(self):
+        import_env = {"nn": nn}
+        invalid_types = [1, 1.0, True, None, {}]
+        layers = [
+            [-1, "nn.SiLU", (), {}, "too_long"],
+            ["nn.SiLU"],
+            [-1, "nn.SiLU", "invalid_args"],
+            [-1, "nn.SiLU", (), "invalid_kwargs"],
+        ]
+        for layer in layers + invalid_types:
+            with self.assertRaises((ValueError, NameError)):
+                parse_layers([layer], import_env)
+
     def test_parse_conv_bn_silu(self):
         def autopad(k, p=None, d=1):  # kernel, padding, dilation
             """Pad to 'same' shape outputs."""
@@ -29,7 +42,8 @@ class TestParseLayers(unittest.TestCase):
                 ["c1", "c2", "k", "s", "autopad(k, p, d)", "d", "g"],
                 {"bias": False},
             ],
-            [-1, "nn.BatchNorm2d", ["c2"]],
+            '[-1, "nn.BatchNorm2d", ["c2"]]',
+            [-1, "nn.SiLU", {"inplace": True}],
             [-1, "nn.SiLU"],
         ]
         expected = (
@@ -44,6 +58,12 @@ class TestParseLayers(unittest.TestCase):
                 "from": ((-1, ALL_FROM),),
                 "kwargs": {},
                 "module": nn.BatchNorm2d,
+            },
+            {
+                "args": (),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {"inplace": True},
+                "module": nn.SiLU,
             },
             {
                 "args": (),

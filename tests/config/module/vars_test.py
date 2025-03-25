@@ -1,6 +1,11 @@
 import unittest
 
-from kurisunet.config.module.vars import _check_vars, _format_vars, _get_vars_env
+from kurisunet.config.module.vars import (
+    _check_vars,
+    _format_vars,
+    _get_vars_env,
+    get_vars_env,
+)
 from kurisunet.constants import STR_PREFIX
 
 
@@ -45,33 +50,39 @@ class TestGetVarsEnv(unittest.TestCase):
         vars = [("a", 1), ("b", 2)]
         expected = {"a": 1, "b": 2}
         self.assertEqual(_get_vars_env(vars, {}), expected)
+        self.assertEqual(get_vars_env(vars), expected)
 
     def test_eval_string(self):
         vars = [("a", "1"), ("b", "2")]
         expected = {"a": 1, "b": 2}
         self.assertEqual(_get_vars_env(vars, {}), expected)
+        self.assertEqual(get_vars_env(vars), expected)
 
     def test_str_prefix(self):
         vars = [("a", "1"), ("b", STR_PREFIX + "2")]
         expected = {"a": 1, "b": "2"}
         self.assertEqual(_get_vars_env(vars, {}), expected)
+        self.assertEqual(get_vars_env(vars), expected)
 
     def test_use_former_vars(self):
         vars = [("a", 1), ("b", "a + 1")]
         expected = {"a": 1, "b": 2}
         self.assertEqual(_get_vars_env(vars, {}), expected)
+        self.assertEqual(get_vars_env(vars), expected)
 
     def test_use_custom_env(self):
         vars = [("a", 1), ("c", "b + 1")]
         env = {"b": 2}
         expected = {"a": 1, "c": 3}
         self.assertEqual(_get_vars_env(vars, env), expected)
+        self.assertEqual(get_vars_env(vars, env), expected)
 
     def test_cover_env(self):
         vars = [("a", 1), ("b", 2), ("c", "b + 1")]
         env = {"b": 3}
         expected = {"a": 1, "b": 2, "c": 3}
         self.assertEqual(_get_vars_env(vars, env), expected)
+        self.assertEqual(get_vars_env(vars, env), expected)
 
 
 if __name__ == "__main__":

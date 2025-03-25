@@ -4,6 +4,21 @@ from kurisunet.config.module.converters import parse_converters
 
 
 class TestParseLayers(unittest.TestCase):
+    def test_invalid_converters(self):
+        env = {"converter": lambda x: x + 1}
+        invalid_types = [1, 1.0, True, None, {}]
+        converters = [
+            ["converter", (), {}, "too_long"],
+            [],
+            ["converter", "invalid_args"],
+            ["converter", (), "invalid_kwargs"],
+            ["1+1"],
+            [True],
+        ]
+        for converter in converters + invalid_types:
+            with self.assertRaises((ValueError, NameError)):
+                parse_converters([converter], env)
+
     def test_parse_converters(self):
         def converter1(x):
             return x + 2
@@ -17,7 +32,7 @@ class TestParseLayers(unittest.TestCase):
             ["lambda x, y: x + y", [1]],
             [lambda x, y: x + y, {"y": "z"}],
             ["converter1"],
-            ["converter2"],
+            ["converter2", (), {}],
         ]
 
         input = 1
