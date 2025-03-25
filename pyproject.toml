@@ -6,7 +6,7 @@ authors = [{ name = "KurisuNya", email = "cuizhu1216@gmail.com" }]
 dependencies = [
     "pyyaml",
     "loguru",
-    "torch>=2.0.0",
+    "torch",
     "kurisuinfo>=0.2.3",
     "safetensors",
 ]
