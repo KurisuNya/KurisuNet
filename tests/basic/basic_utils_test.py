@@ -61,10 +61,12 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(to_path(Path("test.txt")), Path("test.txt"))
 
     def test_to_relative_path(self):
-        self.assertEqual(
-            to_relative_path("/base/test.txt", base_path=Path("/base")),
-            Path("test.txt"),
-        )
+        import platform
+
+        is_windows = platform.system() == "Windows"
+        path = "z:/base/test.txt" if is_windows else "/base/test.txt"
+        bath_path = "z:/base" if is_windows else "/base"
+        self.assertEqual(to_relative_path(path, bath_path), Path("test.txt"))
 
 
 if __name__ == "__main__":
