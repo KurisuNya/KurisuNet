@@ -1,0 +1,32 @@
+auto_register:
+  - ./example/yolov12/module/module.yaml
+
+YOLOv12n:
+  args: [in_ch, class_num]
+  layers:
+    # backbone
+    - [-1, Conv, [in_ch, 16, 3, 2]]
+    - [-1, Conv, [16, 32, 3, 2]]
+    - [-1, C3k2, [32, 64, 1, False, 0.25]]
+    - [-1, Conv, [64, 64, 3, 2]]
+    - [-1, C3k2, [64, 128, 1, False, 0.25]]
+    - [-1, Conv, [128, 128, 3, 2]]
+    - [-1, A2C2f, [128, 128, 2, True, 4]]
+    - [-1, Conv, [128, 256, 3, 2]]
+    - [-1, A2C2f, [256, 256, 2, True, 1]]
+    # head
+    - [-1, nn.Upsample, [None, 2, ~nearest]]
+    - [[-1, 7], "lambda *x: torch.cat(x, 1)"]
+    - [-1, A2C2f, [384, 128, 1, False, -1]]
+
+    - [-1, nn.Upsample, [None, 2, ~nearest]]
+    - [[-1, 5], "lambda *x: torch.cat(x, 1)"]
+    - [-1, A2C2f, [256, 64, 1, False, -1]]
+
+    - [-1, Conv, [64, 64, 3, 2]]
+    - [[-1, 12], "lambda *x: torch.cat(x, 1)"]
+    - [-1, A2C2f, [192, 128, 1, False, -1]]
+
+    - [-1, Conv, [128, 128, 3, 2]]
+    - [[-1, 9], "lambda *x: torch.cat(x, 1)"]
+    - [-1, C3k2, [384, 256, 1, False, 0.25]]
