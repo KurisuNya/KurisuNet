@@ -25,6 +25,16 @@ class TestGetExecEnv(unittest.TestCase):
         local_env = get_exec_env(exec_, env)
         self.assertEqual(local_env, {"b": 2})
 
+    def test_cover_exec_env(self):
+        env = {"a": 1}
+        exec_ = "a = a + 1"
+        local_env = _get_exec_env(exec_, env)
+        self.assertEqual(local_env, {"a": 2})
+        self.assertEqual(env, {"a": 1})
+        local_env = get_exec_env(exec_, env)
+        self.assertEqual(local_env, {"a": 2})
+        self.assertEqual(env, {"a": 1})
+
     def test_invalid_exec_env(self):
         env = {"a": 1}
         exec_ = "b = a + '1'"

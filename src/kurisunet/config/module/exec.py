@@ -12,7 +12,7 @@ def _get_exec_env(exec_: str, env: Env) -> Env:
     if not exec_:
         return {}
     local_env = {}
-    exec(exec_, env, local_env)
+    exec(exec_, env.copy(), local_env)
     return local_env
 
 

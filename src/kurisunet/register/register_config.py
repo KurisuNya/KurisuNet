@@ -163,3 +163,6 @@ class LazyModule:
 
         module.init(self.__name, layers, buffers=buffers, params=params)
         return module
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        return self.get_module(*args, **kwargs)
