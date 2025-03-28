@@ -50,6 +50,7 @@ class PipelineModule(nn.Module):
     def __init__(self):
         """Lazy initialization of the pipeline module."""
         super().__init__()
+        self.__meta: ModuleMeta = {"name": "PipelineModule", "drop_set": set()}
 
     def get_env(self) -> Env:
         return {"self": self}
@@ -62,7 +63,7 @@ class PipelineModule(nn.Module):
         params: dict[str, Any] | None = None,
     ):
         """Real initialization of the pipeline module."""
-        self.__meta: ModuleMeta = {"name": name, "drop_set": set()}
+        self.__meta["name"] = name
         self.__register_buffers(buffers or {})
         self.__register_params(params or {})
 
