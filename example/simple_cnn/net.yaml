@@ -1,3 +1,12 @@
+global_exec: |
+  def make_divisible(v, divisor, min_value=None):
+      if min_value is None:
+          min_value = divisor
+      new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
+      if new_v < 0.9 * v:
+          new_v += divisor
+      return new_v
+
 Flatten:
   layers:
     - [-1, "lambda x: x.view(x.size(0), -1)"]
@@ -20,8 +29,6 @@ Classifier:
     - [-1, nn.Linear, [in_ch, class_num]]
 
 SimpleCNN:
-  imports:
-    - from utils import make_divisible
   args: [in_ch, class_num, width]
   vars: [resize: "lambda ch: make_divisible(int(ch * width), 4)"]
   layers:
