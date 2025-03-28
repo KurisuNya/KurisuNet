@@ -15,6 +15,7 @@ from ..basic.utils import (
     to_relative_path,
 )
 from ..config.module import (
+    get_exec_env,
     get_imports_env,
     get_input_env,
     get_vars_env,
@@ -64,8 +65,9 @@ def register_config(config: dict[str, Any] | Path | str):
     def pipeline(config: dict[str, Any]):
         global_import = config.get(GLOBAL_IMPORTS_KEY, []) + BUILD_IN_IMPORT
         import_ = lambda env: get_imports_env(global_import)
+        exec_ = lambda env: get_exec_env(config.get(GLOBAL_EXEC_KEY, ""), env)
         vars = lambda env: get_vars_env(config.get(GLOBAL_VARS_KEY, []), env)
-        return [import_, vars]
+        return [import_, exec_, vars]
 
     def register(config: dict[str, Any], env: Env):
         for k, v in config.items():
@@ -79,8 +81,8 @@ def register_config(config: dict[str, Any] | Path | str):
     if AUTO_REGISTER_KEY in config:
         register_from_path_list([Path(p) for p in config[AUTO_REGISTER_KEY]])
     global_env = _pipeline_merge_env(pipeline(config), {})
-    except_keys = [AUTO_REGISTER_KEY, GLOBAL_IMPORTS_KEY, GLOBAL_VARS_KEY]
-    register(deepcopy(get_except_keys(config, except_keys)), global_env)
+    excepts = [AUTO_REGISTER_KEY, GLOBAL_IMPORTS_KEY, GLOBAL_EXEC_KEY, GLOBAL_VARS_KEY]
+    register(deepcopy(get_except_keys(config, excepts)), global_env)
 
 
 LazyConfig = dict[str, Any] | Callable[..., dict[str, Any]]
@@ -139,8 +141,9 @@ class LazyModule:
             return module, [init]
 
         def pipeline_after():
+            exec_ = lambda env: get_exec_env(c.get(EXEC_KEY, ""), env)
             vars = lambda env: get_vars_env(c.get(VARS_KEY, []), env)
-            return [vars]
+            return [exec_, vars]
 
         env = _pipeline_merge_env(pipeline_before(), self.__global_env)
         module, init_pipeline = pipeline_init()
