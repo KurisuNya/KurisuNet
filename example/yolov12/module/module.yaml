@@ -2,11 +2,11 @@ Conv:
   # in_ch, out_ch, kernel, stride, padding, dilation, groups, act
   args: [c1, c2, k: 1, s: 1, p: None, g: 1, d: 1, act: nn.SiLU]
   exec: |
-    def autopad(k, p=None, d=1):  # kernel, padding, dilation
+    def auto_pad(k, p=None, d=1):
         k = d * (k - 1) + 1 if isinstance(k, int) else [d * (x - 1) + 1 for x in k]
-        return p or k // 2 if isinstance(k, int) else [x // 2 for x in k]  # auto-pad
+        return p or k // 2 if isinstance(k, int) else [x // 2 for x in k]
   vars:
-    - p: autopad(k, None, d)
+    - p: auto_pad(k, None, d)
   layers:
     - [-1, nn.Conv2d, [c1, c2, k, s, p, d, g], { bias: False }]
     - [-1, nn.BatchNorm2d, [c2]]
@@ -16,11 +16,13 @@ Bottleneck:
   args: [c1, c2, shortcut: True, g: 1, k: "(3, 3)", e: 0.5]
   vars:
     - hid_c: int(c2 * e)
-    - add: shortcut and c1 == c2
+    - need_add: shortcut and c1 == c2
+    - out_from: "[0, -1] if need_add else -1"
+    - add: "lambda x, y: x + y"
   layers:
     - [-1, Conv, [c1, hid_c, "k[0]", 1]]
     - [-1, Conv, [hid_c, c2, "k[1]", 1], { g: g }]
-    - [[0, -1], "lambda x, y: x + y if add else y"]
+    - [out_from, add if need_add else nn.Identity]
 
 C3k:
   args: [c1, c2, n: 1, shortcut: True, g: 1, e: 0.5, k: 3]
@@ -110,6 +112,8 @@ A2:
 A2C2f:
   # prettier-ignore
   args: [c1, c2, n: 1, a2: True, area: 1, residual: False, mlp_ratio: 2, e: 0.5, g: 1, shortcut: True]
+  params:
+    - gamma: nn.Parameter(0.01 * torch.ones(c2), requires_grad=True) if a2 and residual else None
   vars:
     - hid_c: int(c2 * e)
     - c3k_backbone: "[[-1, C3k, [hid_c, hid_c, 2, shortcut, g]]]"
@@ -117,8 +121,6 @@ A2C2f:
     - backbone: "a2_backbone if a2 else c3k_backbone"
     - cat_from: "list(range(-n - 1, 0))"
     - scaling: "lambda x, y: x + gamma.view(-1, len(gamma), 1, 1) * y if gamma is not None else y"
-  params:
-    - gamma: nn.Parameter(0.01 * torch.ones(c2), requires_grad=True) if a2 and residual else None
   layers:
     - [-1, Conv, [c1, hid_c, 1, 1]]
     - "backbone * n"
