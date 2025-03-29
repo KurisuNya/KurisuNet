@@ -2,6 +2,7 @@ from typing import Any
 
 from ...basic.types import Env, ListTuple
 from ...basic.utils import get_first_index_of, get_last_index_of, is_list_tuple_of
+from ...constants import STR_PREFIX
 from ..types import ArgDict, Args, FormattedParam, Kwargs, Param
 from ..utils import eval_string
 
@@ -60,12 +61,17 @@ def _get_input_arg_dict(
         if invalid_keys := set(no_default_names) - set(kwargs.keys()):
             raise ValueError(f"Argument missing for parameters {invalid_keys}")
 
+    def wrap_str(value: Any) -> Any:
+        if not isinstance(value, str):
+            return value
+        return STR_PREFIX + value
+
     check_args_kwargs(params, args, kwargs)
     vars = {get_param_name(param): get_param_value(param) for param in params}
     for i, arg in enumerate(args):
-        vars[get_param_name(params[i])] = arg
+        vars[get_param_name(params[i])] = wrap_str(arg)
     for key, value in kwargs.items():
-        vars[key] = value
+        vars[key] = wrap_str(value)
     return vars
 
 
