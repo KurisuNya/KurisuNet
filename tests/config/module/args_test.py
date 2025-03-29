@@ -83,9 +83,9 @@ class TestGetArgDictEnv(unittest.TestCase):
 class TestGetInputArgDict(unittest.TestCase):
     def test_get_input_arg_dict(self):
         params = ("a", "b", ("c", 3), ("d", 4))
-        args = (1, "arg2")
+        args = (1, 2)
         kwargs = {"c": 1, "d": "kwarg2"}
-        expected = {"a": 1, "b": "arg2", "c": 1, "d": "kwarg2"}
+        expected = {"a": 1, "b": 2, "c": 1, "d": STR_PREFIX + "kwarg2"}
         self.assertEqual(_get_input_arg_dict(params, args, kwargs), expected)
 
     def test_more_args_than_params(self):
@@ -119,9 +119,9 @@ class TestGetInputArgDict(unittest.TestCase):
 class TestGetInputEnv(unittest.TestCase):
     def test_get_input_env(self):
         params = ("a", "b", ("c", 3), ("d", 4))
-        args = (1, "arg2")
+        args = ("test", "arg2")
         kwargs = {"c": 1, "d": "kwarg2 + 1"}
-        expected = {"a": 1, "b": "arg2", "c": 1, "d": 5}
+        expected = {"a": "test", "b": "arg2", "c": 1, "d": "kwarg2 + 1"}
         env = {"arg2": "arg2", "kwarg2": 4}
         self.assertEqual(get_input_env(params, args, kwargs, env), expected)
 
