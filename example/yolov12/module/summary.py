@@ -10,8 +10,8 @@ if __name__ == "__main__":
     dir = Path(__file__).parent
     cfg = {
         "path": "./net.yaml",
-        "name": "YOLOv12n",
-        "kwargs": {"in_ch": 3, "class_num": 2},
+        "name": "YOLOv12",
+        "kwargs": {"in_ch": 3, "class_num": 2, "scale": "m"},
         "input_shape": (1, 3, 128, 128),
     }
 
