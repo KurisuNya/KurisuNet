@@ -141,6 +141,338 @@ class TestPipelineModule(unittest.TestCase):
         input = torch.randn(1, 3, 224, 224)
         self.assertEqual(module(input).shape, (1, 16, 224, 224))
 
+    def test_init_unused(self):
+        conv_bn_relu: tuple[FinalLayer, ...] = (
+            {
+                "args": (3, 16, 1, 1, 0, 1, 1),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {"bias": False},
+                "module": nn.Conv2d,
+            },
+            {
+                "args": (),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {},
+                "module": lambda *a, **k: lambda x: None,
+            },
+            {
+                "args": (16,),
+                "from": ((-2, ALL_FROM),),
+                "kwargs": {},
+                "module": nn.BatchNorm2d,
+            },
+            {
+                "args": (),
+                "from": ((-3, ALL_FROM),),
+                "kwargs": {},
+                "module": lambda *a, **k: lambda x: x,
+            },
+            {
+                "args": (),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {},
+                "module": nn.SiLU,
+            },
+        )
+        module = PipelineModule()
+        module.init("ConvBNReLU", conv_bn_relu)
+        module_str = (
+            "ConvBNReLU(\n"
+            "  (1): Conv2d(3, 16, kernel_size=(1, 1), stride=(1, 1), bias=False)\n"
+            "  (2): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)\n"
+            "  (3): SiLU()\n"
+            ")"
+        )
+        self.assertEqual(str(module), module_str)
+        input = torch.randn(1, 3, 224, 224)
+        self.assertEqual(module(input).shape, (1, 16, 224, 224))
+
+        module.drop()
+        module_str = (
+            "ConvBNReLU(\n"
+            "  (1): Conv2d(3, 16, kernel_size=(1, 1), stride=(1, 1), bias=False)\n"
+            "  (3): SiLU()\n"
+            ")"
+        )
+        self.assertEqual(str(module), module_str)
+        input = torch.randn(1, 3, 224, 224)
+        self.assertEqual(module(input).shape, (1, 16, 224, 224))
+
+        module.resort()
+        module_str = (
+            "ConvBNReLU(\n"
+            "  (1): Conv2d(3, 16, kernel_size=(1, 1), stride=(1, 1), bias=False)\n"
+            "  (2): SiLU()\n"
+            ")"
+        )
+        self.assertEqual(str(module), module_str)
+        input = torch.randn(1, 3, 224, 224)
+        self.assertEqual(module(input).shape, (1, 16, 224, 224))
+
+        module = PipelineModule()
+        module.init("ConvBNReLU", conv_bn_relu)
+        module.drop(resort=True)
+        module_str = (
+            "ConvBNReLU(\n"
+            "  (1): Conv2d(3, 16, kernel_size=(1, 1), stride=(1, 1), bias=False)\n"
+            "  (2): SiLU()\n"
+            ")"
+        )
+        self.assertEqual(str(module), module_str)
+        input = torch.randn(1, 3, 224, 224)
+        self.assertEqual(module(input).shape, (1, 16, 224, 224))
+
+    def test_init_drop_unused(self):
+        conv_bn_relu: tuple[FinalLayer, ...] = (
+            {
+                "args": (3, 16, 1, 1, 0, 1, 1),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {"bias": False},
+                "module": nn.Conv2d,
+            },
+            {
+                "args": (),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {},
+                "module": lambda *a, **k: lambda x: None,
+            },
+            {
+                "args": (16,),
+                "from": DROP_FROM,
+                "kwargs": {},
+                "module": nn.BatchNorm2d,
+            },
+            {
+                "args": (),
+                "from": ((-2, ALL_FROM),),
+                "kwargs": {},
+                "module": lambda *a, **k: lambda x: x,
+            },
+            {
+                "args": (),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {},
+                "module": nn.SiLU,
+            },
+        )
+        module = PipelineModule()
+        module.init("ConvBNReLU", conv_bn_relu)
+        module_str = (
+            "ConvBNReLU(\n"
+            "  (1): Conv2d(3, 16, kernel_size=(1, 1), stride=(1, 1), bias=False)\n"
+            "  (2): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)\n"
+            "  (3): SiLU()\n"
+            ")"
+        )
+        self.assertEqual(str(module), module_str)
+        input = torch.randn(1, 3, 224, 224)
+        self.assertEqual(module(input).shape, (1, 16, 224, 224))
+
+        module.drop()
+        module_str = (
+            "ConvBNReLU(\n"
+            "  (1): Conv2d(3, 16, kernel_size=(1, 1), stride=(1, 1), bias=False)\n"
+            "  (3): SiLU()\n"
+            ")"
+        )
+        self.assertEqual(str(module), module_str)
+        input = torch.randn(1, 3, 224, 224)
+        self.assertEqual(module(input).shape, (1, 16, 224, 224))
+
+        module.resort()
+        module_str = (
+            "ConvBNReLU(\n"
+            "  (1): Conv2d(3, 16, kernel_size=(1, 1), stride=(1, 1), bias=False)\n"
+            "  (2): SiLU()\n"
+            ")"
+        )
+        self.assertEqual(str(module), module_str)
+        input = torch.randn(1, 3, 224, 224)
+        self.assertEqual(module(input).shape, (1, 16, 224, 224))
+
+        module = PipelineModule()
+        module.init("ConvBNReLU", conv_bn_relu)
+        module.drop(resort=True)
+        module_str = (
+            "ConvBNReLU(\n"
+            "  (1): Conv2d(3, 16, kernel_size=(1, 1), stride=(1, 1), bias=False)\n"
+            "  (2): SiLU()\n"
+            ")"
+        )
+        self.assertEqual(str(module), module_str)
+        input = torch.randn(1, 3, 224, 224)
+        self.assertEqual(module(input).shape, (1, 16, 224, 224))
+
+    def test_init_same(self):
+        conv = nn.Conv2d(16, 16, 3, 1, 1, bias=False)
+        conv_bn_relu: tuple[FinalLayer, ...] = (
+            {
+                "args": (3, 16, 1, 1, 0, 1, 1),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {"bias": False},
+                "module": nn.Conv2d,
+            },
+            {
+                "args": (),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {},
+                "module": lambda *a, **k: conv,
+            },
+            {
+                "args": (),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {},
+                "module": lambda *a, **k: conv,
+            },
+            {
+                "args": (16,),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {},
+                "module": nn.BatchNorm2d,
+            },
+            {
+                "args": (),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {},
+                "module": nn.SiLU,
+            },
+        )
+        module = PipelineModule()
+        module.init("ConvBNReLU", conv_bn_relu)
+        module_str = (
+            "ConvBNReLU(\n"
+            "  (1): Conv2d(3, 16, kernel_size=(1, 1), stride=(1, 1), bias=False)\n"
+            "  (2): Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)\n"
+            "  (3): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)\n"
+            "  (4): SiLU()\n"
+            ")"
+        )
+        self.assertIsInstance(module, CustomizedModuleName)
+        self.assertEqual(str(module), module_str)
+        input = torch.randn(1, 3, 224, 224)
+        self.assertEqual(module(input).shape, (1, 16, 224, 224))
+
+    def test_init_same_drop(self):
+        conv = nn.Conv2d(16, 16, 3, 1, 1, bias=False)
+        conv_bn_relu: tuple[FinalLayer, ...] = (
+            {
+                "args": (3, 16, 1, 1, 0, 1, 1),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {"bias": False},
+                "module": nn.Conv2d,
+            },
+            {
+                "args": (),
+                "from": DROP_FROM,
+                "kwargs": {},
+                "module": lambda *a, **k: conv,
+            },
+            {
+                "args": (16,),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {},
+                "module": nn.BatchNorm2d,
+            },
+            {
+                "args": (),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {},
+                "module": lambda *a, **k: conv,
+            },
+            {
+                "args": (),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {},
+                "module": nn.SiLU,
+            },
+        )
+        module = PipelineModule()
+        module.init("ConvBNReLU", conv_bn_relu)
+        module_str = (
+            "ConvBNReLU(\n"
+            "  (1): Conv2d(3, 16, kernel_size=(1, 1), stride=(1, 1), bias=False)\n"
+            "  (2): Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)\n"
+            "  (3): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)\n"
+            "  (4): SiLU()\n"
+            ")"
+        )
+        self.assertIsInstance(module, CustomizedModuleName)
+        self.assertEqual(str(module), module_str)
+        input = torch.randn(1, 3, 224, 224)
+        self.assertEqual(module(input).shape, (1, 16, 224, 224))
+
+        module.drop()
+        module_str = (
+            "ConvBNReLU(\n"
+            "  (1): Conv2d(3, 16, kernel_size=(1, 1), stride=(1, 1), bias=False)\n"
+            "  (2): Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)\n"
+            "  (3): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)\n"
+            "  (4): SiLU()\n"
+            ")"
+        )
+        self.assertEqual(str(module), module_str)
+        input = torch.randn(1, 3, 224, 224)
+        self.assertEqual(module(input).shape, (1, 16, 224, 224))
+
+        conv_bn_relu: tuple[FinalLayer, ...] = (
+            {
+                "args": (3, 16, 1, 1, 0, 1, 1),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {"bias": False},
+                "module": nn.Conv2d,
+            },
+            {
+                "args": (),
+                "from": DROP_FROM,
+                "kwargs": {},
+                "module": lambda *a, **k: conv,
+            },
+            {
+                "args": (16,),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {},
+                "module": nn.BatchNorm2d,
+            },
+            {
+                "args": (),
+                "from": DROP_FROM,
+                "kwargs": {},
+                "module": lambda *a, **k: conv,
+            },
+            {
+                "args": (),
+                "from": ((-1, ALL_FROM),),
+                "kwargs": {},
+                "module": nn.SiLU,
+            },
+        )
+        module = PipelineModule()
+        module.init("ConvBNReLU", conv_bn_relu)
+        module_str = (
+            "ConvBNReLU(\n"
+            "  (1): Conv2d(3, 16, kernel_size=(1, 1), stride=(1, 1), bias=False)\n"
+            "  (2): Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)\n"
+            "  (3): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)\n"
+            "  (4): SiLU()\n"
+            ")"
+        )
+        self.assertIsInstance(module, CustomizedModuleName)
+        self.assertEqual(str(module), module_str)
+        input = torch.randn(1, 3, 224, 224)
+        self.assertEqual(module(input).shape, (1, 16, 224, 224))
+
+        module.drop()
+        module_str = (
+            "ConvBNReLU(\n"
+            "  (1): Conv2d(3, 16, kernel_size=(1, 1), stride=(1, 1), bias=False)\n"
+            "  (3): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)\n"
+            "  (4): SiLU()\n"
+            ")"
+        )
+        self.assertEqual(str(module), module_str)
+        input = torch.randn(1, 3, 224, 224)
+        self.assertEqual(module(input).shape, (1, 16, 224, 224))
+
 
 if __name__ == "__main__":
     unittest.main()

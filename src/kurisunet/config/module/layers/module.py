@@ -1,4 +1,7 @@
-from typing import Any, Callable
+from types import FunctionType
+from typing import Any
+
+import torch.nn as nn
 
 from ....basic.types import Env
 from ...types import CustomModule, LayerModule, Module
@@ -6,8 +9,8 @@ from ...utils import eval_string
 
 
 def __check_module(module: Any) -> None:
-    if not isinstance(module, (str, type, Callable, CustomModule)):
-        msg = f"Invalid module {module}, should be str/type/callable/custom module"
+    if not isinstance(module, (str, CustomModule, type, FunctionType, nn.Module)):
+        msg = f"Invalid module {module}, should be str/CustomModule/type/callable/nn.Module"
         raise ValueError(msg)
 
 
@@ -18,9 +21,12 @@ def __parse_module(module: LayerModule, env: Env) -> Module:
         return lambda *a, **k: module.get_module(*a, **k)
     if isinstance(module, type):
         return module
-    if isinstance(module, Callable):
+    if isinstance(module, FunctionType):
         return lambda *a, **k: lambda *args: module(*args, *a, **k)
-    raise ValueError(f"Invalid module {module}, should be type/callable")
+    if isinstance(module, nn.Module):
+        return lambda: module
+    msg = f"Invalid module {module}, should be str/CustomModule/type/callable/nn.Module"
+    raise ValueError(msg)
 
 
 def parse_module(module: LayerModule, env: Env | None) -> Module:

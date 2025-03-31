@@ -8,9 +8,9 @@ GLOBAL_VARS_KEY = "global_vars"
 
 IMPORTS_KEY = "imports"
 ARGS_KEY = "args"
+EXEC_KEY = "exec"
 BUFFERS_KEY = "buffers"
 PARAMS_KEY = "params"
-EXEC_KEY = "exec"
 VARS_KEY = "vars"
 
 CONVERTERS_KEY = "converters"

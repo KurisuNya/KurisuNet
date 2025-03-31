@@ -1,5 +1,7 @@
 from abc import abstractmethod
-from typing import Any, Callable, TypeVar, TypedDict, Protocol, runtime_checkable
+from typing import Any, Callable, Protocol, TypeVar, TypedDict, runtime_checkable
+
+import torch.nn as nn
 
 from ..basic.types import ListTuple, OneOrMore
 
@@ -38,7 +40,7 @@ class CustomModule(Protocol):
 
 
 Module = type | Callable[..., Any]
-ParsedModule = Module | CustomModule
+ParsedModule = Module | CustomModule | nn.Module
 LayerModule = NeedEval[ParsedModule]
 
 LayerArgs = tuple[NeedEval[Any], ...]
