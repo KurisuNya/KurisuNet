@@ -41,7 +41,6 @@ class PipelineModule(nn.Module):
         modules = list(modules)
         same_dict = get_same_indexes(modules)
 
-        __import__("pprint").pprint(forward_drop)
         for i, same in same_dict.items():
             logger.info(
                 f"modules with indexes {i} and {same} are the same "
@@ -52,7 +51,6 @@ class PipelineModule(nn.Module):
                 forward_drop.difference_update(same)
             else:
                 forward_drop.difference_update(all_indexes)
-        __import__("pprint").pprint(forward_drop)
 
         is_module = lambda p: isinstance(p[1], nn.Module)
         not_same = lambda p: p[0] not in {i for s in same_dict.values() for i in s}
