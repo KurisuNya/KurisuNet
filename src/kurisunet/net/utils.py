@@ -1,4 +1,5 @@
 from copy import copy
+from itertools import combinations
 from typing import Any, Counter, Iterable, TypeVar, cast
 
 from ..config.module import is_drop_key
@@ -36,7 +37,7 @@ def get_drop_layer_indexes(layers: Iterable[FinalLayer]) -> set[int]:
 def regularize_layer_from(layers: Iterable[FinalLayer]) -> tuple[FinalLayer, ...]:
     """
     Regularize the layer from indexes to absolute indexes.
-    Layers should be handled to exclude strings in the 'from' field before.
+    Layers with string "from" will be ignored.
     """
 
     def to_absolute(index: int, from_: FromTuple) -> FromTuple:
@@ -53,21 +54,19 @@ def regularize_layer_from(layers: Iterable[FinalLayer]) -> tuple[FinalLayer, ...
 
         return tuple((regularize_key(index, k), v) for k, v in from_)
 
-    if any(isinstance(l["from"], str) for l in layers):
-        error_msg = "Layers should not contain string 'from' values when regularizing"
-        raise ValueError(error_msg)
-
-    layers = copy(list(layers))
+    all_layers = copy(list(layers))
+    layers = [l for l in all_layers if not isinstance(l["from"], str)]
     for i, layer in layer_enum(layers):
         from_ = cast(FromTuple, layer["from"])
         layer["from"] = to_absolute(i, from_)
-    return tuple(layers)
+    return tuple(all_layers)
 
 
 def get_unused_layer_indexes(layers: Iterable[FinalLayer]) -> set[int]:
     """
     Get the indexes of the layers that are not used by other layers.
-    Layers should be handled to exclude strings in the 'from' field and should be converted to absolute indexes before.
+    Layers should be converted to absolute indexes before.
+    Layers with string "from" will be ignored.
     """
 
     def get_used_indexes(from_list: list[FromTuple]) -> set[int]:
@@ -75,11 +74,33 @@ def get_unused_layer_indexes(layers: Iterable[FinalLayer]) -> set[int]:
         use_count = [Counter(f) for f in key_list]
         return set(sum(use_count, Counter()).keys())
 
-    if any(isinstance(l["from"], str) for l in layers):
-        error_msg = "Layers should not contain string 'from' values when calculating unused indexes"
-        raise ValueError(error_msg)
+    layer_range = lambda l: range(LAYER_START_INDEX, len(l) + LAYER_START_INDEX)
 
-    from_list = cast(list[FromTuple], [l["from"] for l in layers])
+    indexed_all_layers = layer_enum(copy(list(layers)))
+    not_str_layer = lambda p: not isinstance(p[1]["from"], str)
+    indexed_layers = list(filter(not_str_layer, indexed_all_layers))
+    from_list = cast(list[FromTuple], [l["from"] for _, l in indexed_layers])
+
     used_indexes = get_used_indexes(from_list)
-    all_indexes = set(range(LAYER_START_INDEX, len(from_list) + LAYER_START_INDEX - 1))
-    return all_indexes.difference(used_indexes)
+    all_indexes = set(layer_range(from_list))
+    last_index = len(from_list) + LAYER_START_INDEX - 1
+    unused_indexes = all_indexes.difference(used_indexes).difference({last_index})
+
+    index_dict = {i: p[0] for i, p in zip(layer_range(indexed_layers), indexed_layers)}
+    return {index_dict[i] for i in unused_indexes}
+
+
+def get_same_indexes(iterable: Iterable[T]) -> dict[int, set[int]]:
+    """
+    Get the indexes of the elements that are the same.
+    It will return a dictionary where the keys are the indexes of the first element and the values are sets of indexes of the same elements.
+    Indexes are starting from LAYER_START_INDEX.
+    """
+
+    same_dict: dict[int, set[int]] = {}
+    sames = lambda d: {i for same in d.values() for i in same}
+    for (i, item1), (j, item2) in combinations(layer_enum(iterable), 2):
+        if item1 is not item2 or i in sames(same_dict):
+            continue
+        same_dict[i] = same_dict.get(i, set()) | {j}
+    return same_dict

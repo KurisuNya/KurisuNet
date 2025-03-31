@@ -11,6 +11,7 @@ from kurisunet.net.utils import (
     auto_unpack,
     get_drop_layer_indexes,
     get_except_indexes,
+    get_same_indexes,
     get_unused_layer_indexes,
     layer_enum,
     module_enum,
@@ -52,6 +53,18 @@ class TestGetExceptIndexes(unittest.TestCase):
         self.assertEqual(result, [])
 
 
+class TestGetSameIndexes(unittest.TestCase):
+    def test_get_same_indexes(self):
+        seq = [1, 2, 2, 3, 4, 4]
+        result = get_same_indexes(seq)
+        expected = {2: {3}, 5: {6}}
+        self.assertEqual(result, expected)
+        seq = [1, 2, 3, 4, 5]
+        result = get_same_indexes(seq)
+        expected = {}
+        self.assertEqual(result, expected)
+
+
 class TestGetDropLayerIndexes(unittest.TestCase):
     def test_get_drop_layer_indexes(self):
         layers: list[FinalLayer] = [
@@ -90,23 +103,24 @@ class TestGetUnusedLayerIndexes(unittest.TestCase):
             {"from": ((i[3], ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
             {"from": ((i[5], ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
         ]
-        unused_indexes = {i[2], i[4]}
+        unused_indexes = {LAYER_START_INDEX + 1, LAYER_START_INDEX + 3}
         result = get_unused_layer_indexes(layers)
         self.assertEqual(result, unused_indexes)
 
-    def test_invalid_layer_indexes(self):
         layers: list[FinalLayer] = [
-            {"from": ((0, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
-            {"from": ((1, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+            {"from": ((i[0], ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+            {"from": ((i[1], ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
             {"from": DROP_FROM, "module": Module, "args": (), "kwargs": {}},
-            {"from": ((1, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+            {"from": ((i[1], ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+            {"from": ((i[3], ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
             {"from": DROP_FROM, "module": Module, "args": (), "kwargs": {}},
-            {"from": ((3, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
-            {"from": ((3, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
-            {"from": ((5, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+            {"from": ((i[3], ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+            {"from": DROP_FROM, "module": Module, "args": (), "kwargs": {}},
+            {"from": ((i[5], ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
         ]
-        with self.assertRaises(ValueError):
-            get_unused_layer_indexes(layers)
+        unused_indexes = {LAYER_START_INDEX + 1, LAYER_START_INDEX + 4}
+        result = get_unused_layer_indexes(layers)
+        self.assertEqual(result, unused_indexes)
 
 
 class TestLayerEnum(unittest.TestCase):
@@ -176,6 +190,25 @@ class TestRegularizeLayerFrom(unittest.TestCase):
         )
         self.assertEqual(result, expected)
 
+        layers: list[FinalLayer] = [
+            {"from": ((-1, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+            {"from": DROP_FROM, "module": Module, "args": (), "kwargs": {}},
+            {"from": ((-1, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+            {"from": ((-1, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+            {"from": ((-2, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+            {"from": ((-3, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+        ]
+        result = regularize_layer_from(layers)
+        expected = (
+            {"from": ((i[0], ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+            {"from": DROP_FROM, "module": Module, "args": (), "kwargs": {}},
+            {"from": ((i[1], ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+            {"from": ((i[2], ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+            {"from": ((i[2], ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+            {"from": ((i[2], ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
+        )
+        self.assertEqual(result, expected)
+
         invalid: list[list[FinalLayer]] = [
             [
                 {"from": ((-2, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
@@ -184,10 +217,6 @@ class TestRegularizeLayerFrom(unittest.TestCase):
             [
                 {"from": ((-1, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
                 {"from": ((2, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
-            ],
-            [
-                {"from": ((-1, ALL_FROM),), "module": Module, "args": (), "kwargs": {}},
-                {"from": DROP_FROM, "module": Module, "args": (), "kwargs": {}},
             ],
         ]
         for layers in invalid:

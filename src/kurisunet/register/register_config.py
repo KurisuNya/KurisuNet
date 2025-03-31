@@ -22,7 +22,6 @@ from ..config.module import (
     parse_converters,
     parse_layers,
 )
-from ..config.module.converters import parse_converters
 from ..config.types import CustomModule
 from ..constants import *
 from ..net.module import PipelineModule
@@ -138,12 +137,12 @@ class LazyModule:
         def pipeline_init():
             module = PipelineModule()
             init = lambda env: module.get_env()
-            return module, [init]
+            exec_ = lambda env: get_exec_env(c.get(EXEC_KEY, ""), env)
+            return module, [init, exec_]
 
         def pipeline_after():
-            exec_ = lambda env: get_exec_env(c.get(EXEC_KEY, ""), env)
             vars = lambda env: get_vars_env(c.get(VARS_KEY, []), env)
-            return [exec_, vars]
+            return [vars]
 
         env = _pipeline_merge_env(pipeline_before(), self.__global_env)
         module, init_pipeline = pipeline_init()
