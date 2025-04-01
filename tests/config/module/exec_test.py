@@ -1,6 +1,11 @@
 import unittest
 
-from kurisunet.config.module.exec import _check_exec, _get_exec_env, get_exec_env
+from kurisunet.config.module.exec import (
+    _check_exec,
+    _get_exec_env,
+    exec_with_env,
+    get_exec_env,
+)
 
 
 class TestCheckExec(unittest.TestCase):
@@ -50,6 +55,26 @@ class TestGetExecEnv(unittest.TestCase):
         self.assertEqual(local_env, {})
         local_env = get_exec_env(exec_, env)
         self.assertEqual(local_env, {})
+
+
+class TestExecWithEnv(unittest.TestCase):
+    def test_exec_with_env(self):
+        env = {"a": 1}
+        exec_ = "a = a + 1"
+        exec_with_env(exec_, env)
+        self.assertEqual(env, {"a": 1})
+
+    def test_exec_with_invalid_env(self):
+        env = {"a": 1}
+        exec_ = "b = a + '1'"
+        with self.assertRaises(TypeError):
+            exec_with_env(exec_, env)
+
+    def test_exec_with_empty_env(self):
+        env = {}
+        exec_ = "b = a + 1"
+        with self.assertRaises(NameError):
+            exec_with_env(exec_, env)
 
 
 if __name__ == "__main__":

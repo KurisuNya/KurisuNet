@@ -15,6 +15,7 @@ from ..basic.utils import (
     to_relative_path,
 )
 from ..config.module import (
+    exec_with_env,
     get_exec_env,
     get_imports_env,
     get_input_env,
@@ -137,7 +138,7 @@ class LazyModule:
         def pipeline_init():
             module = PipelineModule()
             init = lambda env: module.get_env()
-            exec_ = lambda env: get_exec_env(c.get(EXEC_KEY, ""), env)
+            exec_ = lambda env: get_exec_env(c.get(PRE_EXEC_KEY, ""), env)
             return module, [init, exec_]
 
         def pipeline_after():
@@ -149,18 +150,20 @@ class LazyModule:
         env = _pipeline_merge_env(init_pipeline, env)
 
         buffers = get_vars_env(c.get(BUFFERS_KEY, []), env)
-        params = get_vars_env(c.get(PARAMS_KEY, []), merge_envs((env, buffers)))
+        env = merge_envs((env, buffers))
+        params = get_vars_env(c.get(PARAMS_KEY, []), env)
         if is_env_conflict(buffers, params):
             raise ValueError("Buffers and params should not have same key")
-        env = _pipeline_merge_env(pipeline_after(), merge_envs((env, buffers, params)))
+        env = merge_envs((env, buffers, params))
+        env = _pipeline_merge_env(pipeline_after(), env)
 
         layers_str = "\n".join(str(layer) for layer in c[LAYERS_KEY])
         logger.debug(f"{self.__name} layers before parsing:\n{layers_str}")
         layers = parse_layers(c[LAYERS_KEY], env)
         layers_str = "\n".join(str(layer) for layer in c[LAYERS_KEY])
         logger.debug(f"{self.__name} layers after parsing:\n{layers_str}")
-
         module.init(self.__name, layers, buffers=buffers, params=params)
+        exec_with_env(c.get(POST_EXEC_KEY, ""), env)
         return module
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
