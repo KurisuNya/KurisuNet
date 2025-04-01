@@ -2,13 +2,15 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Literal
 
-from loguru import logger
 from safetensors import safe_open
 from safetensors.torch import save_file
 import torch
 import torch.nn as nn
 
 from ..net.module import PipelineModule
+from ..utils.logger import get_logger
+
+logger = get_logger("Utils")
 
 
 def save_state_dict(

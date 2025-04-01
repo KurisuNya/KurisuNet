@@ -1,12 +1,13 @@
 from copy import copy
 from typing import Callable
 
-from loguru import logger
-
 from ..basic.types import Env
-from ..config.types import Module, CustomModule
+from ..config.types import CustomModule, Module
 from ..constants import OUTPUT_MODULE_NAME
 from ..net import OutputModule
+from ..utils.logger import get_logger
+
+logger = get_logger("Register")
 
 
 def register_module(obj):
