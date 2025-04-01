@@ -47,6 +47,7 @@ class PipelineModule(nn.Module):
                 f"modules with indexes {index} and {same} are the same, "
                 f"but not all of them are dropped in forward pass, "
                 f"so its weights will not be dropped with 'drop' method"
+            )
             return forward_drop.difference(all_indexes)
 
         modules = list(modules)
