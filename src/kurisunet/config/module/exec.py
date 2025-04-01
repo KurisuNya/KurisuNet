@@ -16,7 +16,19 @@ def _get_exec_env(exec_: str, env: Env) -> Env:
     return local_env
 
 
+def _exec_with_env(exec_: str, env: Env) -> None:
+    if not exec_:
+        return
+    exec(exec_, env.copy(), {})
+
+
+def exec_with_env(exec_: str, env: Env | None = None) -> None:
+    """Execute the given exec statement with the provided environment."""
+    _check_exec(exec_)
+    _exec_with_env(exec_, env or {})
+
+
 def get_exec_env(exec_: str, env: Env | None = None) -> Env:
-    """Get the environment from the given exec statement."""
+    """Execute the given exec statement and return the environment."""
     _check_exec(exec_)
     return _get_exec_env(exec_, env or {})
