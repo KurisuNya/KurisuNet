@@ -146,7 +146,6 @@ class LazyModule:
         return config
 
     def get_module(self, *args: Any, **kwargs: Any) -> Any:
-        logger = get_logger("Parser")
         config = self.__prepare_config(*args, **kwargs)
 
         def pipeline_before():
@@ -177,6 +176,7 @@ class LazyModule:
         env = merge_envs((env, buffers, params))
         env = _pipeline_merge_env(pipeline_after(), env)
 
+        logger = get_logger("Layers")
         layers_str = "\n".join(str(layer) for layer in config[LAYERS_KEY])
         logger.debug(f"{self.__name} layers before parsing:\n{layers_str}")
         layers = parse_layers(config[LAYERS_KEY], env)
