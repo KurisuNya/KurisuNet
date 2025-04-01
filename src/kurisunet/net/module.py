@@ -1,11 +1,10 @@
 from typing import Any, Callable, Iterable, cast
 
-from loguru import logger
 import torch.nn as nn
 
-from ..basic.types import Env
 from ..config.types import FinalLayer, FromTuple
 from ..constants import ALL_FROM
+from ..utils.logger import get_logger
 from .types import ModuleMeta
 from .utils import auto_unpack, get_same_indexes, module_enum
 from .utils import (
@@ -15,6 +14,8 @@ from .utils import (
     layer_enum,
     regularize_layer_from,
 )
+
+logger = get_logger("Module")
 
 
 def OutputModule(*args: Any) -> tuple[Any, ...] | Any:
@@ -45,7 +46,7 @@ class PipelineModule(nn.Module):
             logger.warning(
                 f"modules with indexes {index} and {same} are the same, "
                 f"but not all of them are dropped in forward pass, "
-                f"so it's weights will not be dropped with 'drop' method"
+                f"so its weights will not be dropped with 'drop' method"
             )
             return forward_drop.difference(all_indexes)
 

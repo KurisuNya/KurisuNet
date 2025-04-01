@@ -2,10 +2,11 @@ import importlib.util
 from pathlib import Path
 from typing import Iterable
 
-from loguru import logger
-
 from ..basic.utils import to_relative_path
 from ..constants import CONFIG_SUFFIX, PYTHON_SUFFIX
+from ..utils.logger import get_logger
+
+logger = get_logger("Register")
 
 
 def __exec_module(name: str, file_path: Path) -> None:

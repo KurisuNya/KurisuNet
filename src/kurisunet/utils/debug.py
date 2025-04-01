@@ -1,9 +1,12 @@
 from typing import Iterable, Literal
 
 from kurisuinfo import CustomizedModuleName
-from loguru import logger
 from torch import Tensor
 import torch.nn as nn
+
+from ..utils.logger import get_logger
+
+logger = get_logger("Utils")
 
 
 def __log_shape_hook(module, input, output):

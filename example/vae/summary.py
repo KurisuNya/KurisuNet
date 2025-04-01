@@ -1,9 +1,9 @@
 from pathlib import Path
 
 from kurisuinfo import summary
-from loguru import logger
 
 from kurisunet import get_module
+from kurisunet.utils.logger import logger
 
 if __name__ == "__main__":
     dir = Path(__file__).parent
