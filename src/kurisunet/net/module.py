@@ -46,8 +46,7 @@ class PipelineModule(nn.Module):
             logger.warning(
                 f"modules with indexes {index} and {same} are the same, "
                 f"but not all of them are dropped in forward pass, "
-                f"so it's weights will not be dropped with 'drop' method"
-            )
+                f"so its weights will not be dropped with 'drop' method"
             return forward_drop.difference(all_indexes)
 
         modules = list(modules)
