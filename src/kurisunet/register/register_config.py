@@ -2,7 +2,6 @@ from copy import copy, deepcopy
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-from loguru import logger
 import yaml
 
 from ..basic.types import Env
@@ -25,6 +24,7 @@ from ..config.module import (
 )
 from ..constants import *
 from ..net.module import PipelineModule
+from ..utils.logger import get_logger
 from .register import ConverterRegister, ModuleRegister
 from .register_file import register_from_paths
 
@@ -52,6 +52,7 @@ def get_module(
 
 
 def register_config(config: dict[str, Any] | Path | str):
+    logger = get_logger("Register")
     if isinstance(config, (str, Path)):
         config = to_path(config)
         logger.info(f"Registering config from {to_relative_path(config)}")
@@ -85,6 +86,8 @@ LazyConfig = dict[str, Any] | Callable[..., dict[str, Any]]
 
 
 def __convert_single_config(config: dict[str, Any], env: Env) -> LazyConfig:
+    logger = get_logger("Converter")
+
     def pipeline(*args: Any, **kwargs: Any):
         registered_modules = lambda _: ModuleRegister.get_env()
         registered_converters = lambda _: ConverterRegister.get_env()
@@ -107,6 +110,7 @@ def __convert_single_config(config: dict[str, Any], env: Env) -> LazyConfig:
 
 
 def __register_single_config(name: str, config: LazyConfig, env: Env):
+    logger = get_logger("Register")
     if isinstance(config, dict) and LAYERS_KEY not in config:
         logger.warning(f"{name} can't be recognized as a module")
         return
@@ -142,6 +146,7 @@ class LazyModule:
         return config
 
     def get_module(self, *args: Any, **kwargs: Any) -> Any:
+        logger = get_logger("Parser")
         config = self.__prepare_config(*args, **kwargs)
 
         def pipeline_before():
