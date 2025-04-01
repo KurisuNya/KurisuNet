@@ -38,6 +38,11 @@ class CustomModule(Protocol):
     def get_module(self, *args: Any, **kwargs: Any) -> Any:
         pass
 
+    @abstractmethod
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        """should be a alias of get_module"""
+        pass
+
 
 Module = type | Callable[..., Any]
 ParsedModule = Module | CustomModule | nn.Module

@@ -38,26 +38,31 @@ class PipelineModule(nn.Module):
         modules: Iterable[nn.Module | Callable[..., Any]],
         forward_drop: set[int] = set(),
     ) -> None:
+        def remove_same_drop(forward_drop: set[int], index: int, same: set[int]):
+            all_indexes = {index} | same
+            if all_indexes.issubset(forward_drop):
+                return forward_drop.difference(same)
+            logger.warning(
+                f"modules with indexes {index} and {same} are the same, "
+                f"but not all of them are dropped in forward pass, "
+                f"so it's weights will not be dropped with 'drop' method"
+            )
+            return forward_drop.difference(all_indexes)
+
         modules = list(modules)
         same_dict = get_same_indexes(modules)
-
         for i, same in same_dict.items():
             logger.info(
                 f"modules with indexes {i} and {same} are the same "
                 f"and will only be registered once"
             )
-            all_indexes = {i} | same
-            if all_indexes.issubset(forward_drop):
-                forward_drop.difference_update(same)
-            else:
-                forward_drop.difference_update(all_indexes)
+            forward_drop = remove_same_drop(forward_drop, i, same)
 
         is_module = lambda p: isinstance(p[1], nn.Module)
         not_same = lambda p: p[0] not in {i for s in same_dict.values() for i in s}
         indexed_module = filter(is_module, layer_enum(modules))
         indexed_module = filter(not_same, indexed_module)
         reindexed_module = list(module_enum(indexed_module))
-
         for module_index, (layer_index, module) in reindexed_module:
             module = cast(nn.Module, module)
             if layer_index in forward_drop:
@@ -68,9 +73,6 @@ class PipelineModule(nn.Module):
         """Lazy initialization of the pipeline module."""
         super().__init__()
         self.__meta: ModuleMeta = {"name": "PipelineModule", "drop_set": set()}
-
-    def get_env(self) -> Env:
-        return {"self": self}
 
     def init(
         self,
@@ -138,6 +140,7 @@ class PipelineModule(nn.Module):
         Drop submodules with indexes in drop_set.
         If resort is True, resort the submodules after dropping.
         """
+        logger.debug(f"Dropping submodules with indexes {self.__meta['drop_set']}")
         for i in self.__meta["drop_set"]:
             del self._modules[str(i)]
         self.__meta["drop_set"] = set()
@@ -146,12 +149,14 @@ class PipelineModule(nn.Module):
 
     def resort(self):
         """Resort the submodules."""
+        logger.debug("Submodules before resorting:\n" + self.get_submodules_str())
         modules = self._modules.copy()
         for k in modules.keys():
             del self._modules[k]
         for i, k in module_enum(sorted(modules.keys(), key=lambda x: int(x))):
             self.add_module(str(i), modules[k])
         del modules
+        logger.debug("Submodules after resorting:\n" + self.get_submodules_str())
 
     def get_module_name(self) -> str:
         """Get the module name."""

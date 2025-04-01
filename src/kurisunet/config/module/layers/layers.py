@@ -62,7 +62,7 @@ def __format_layers(layers: ListTuple) -> tuple[FormattedLayer, ...]:
     return tuple(format_layer(layer) for layer in layers)
 
 
-def parse_layers(layers: ListTuple, env: Env | None = None) -> tuple[FinalLayer, ...]:
+def parse_layers(layers: Any, env: Env | None = None) -> tuple[FinalLayer, ...]:
     """Parse the expressions between and inside the layers."""
 
     def parse_layer(layer: FormattedLayer) -> FinalLayer:

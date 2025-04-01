@@ -36,7 +36,7 @@ def _get_imports_env(imports: ListTuple[str]) -> Env:
     return modules
 
 
-def get_imports_env(imports: ListTuple[str]) -> Env:
+def get_imports_env(imports: Any) -> Env:
     """Get the imports environment from the given import statements."""
     _check_imports(imports)
     return _get_imports_env(imports)

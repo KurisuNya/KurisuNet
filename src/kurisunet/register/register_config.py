@@ -23,11 +23,10 @@ from ..config.module import (
     parse_converters,
     parse_layers,
 )
-from ..config.types import CustomModule
 from ..constants import *
 from ..net.module import PipelineModule
-from .register import ModuleRegister
-from .register_file import register_from_path_list
+from .register import ConverterRegister, ModuleRegister
+from .register_file import register_from_paths
 
 
 EnvFunc = Callable[[Env], Env]
@@ -49,8 +48,6 @@ def get_module(
     if config:
         register_config(config)
     module = ModuleRegister.get(name)
-    if isinstance(module, CustomModule):
-        return module.get_module(*args, **kwargs)
     return module(*args, **kwargs)
 
 
@@ -64,7 +61,7 @@ def register_config(config: dict[str, Any] | Path | str):
 
     def pipeline(config: dict[str, Any]):
         global_import = config.get(GLOBAL_IMPORTS_KEY, []) + BUILD_IN_IMPORT
-        import_ = lambda env: get_imports_env(global_import)
+        import_ = lambda _: get_imports_env(global_import)
         exec_ = lambda env: get_exec_env(config.get(GLOBAL_EXEC_KEY, ""), env)
         vars = lambda env: get_vars_env(config.get(GLOBAL_VARS_KEY, []), env)
         return [import_, exec_, vars]
@@ -78,8 +75,7 @@ def register_config(config: dict[str, Any] | Path | str):
                 v = __convert_single_config(v, env)
             __register_single_config(k, v, env)
 
-    if AUTO_REGISTER_KEY in config:
-        register_from_path_list([Path(p) for p in config[AUTO_REGISTER_KEY]])
+    register_from_paths(Path(p) for p in config.get(AUTO_REGISTER_KEY, []))
     global_env = _pipeline_merge_env(pipeline(config), {})
     excepts = [AUTO_REGISTER_KEY, GLOBAL_IMPORTS_KEY, GLOBAL_EXEC_KEY, GLOBAL_VARS_KEY]
     register(deepcopy(get_except_keys(config, excepts)), global_env)
@@ -90,9 +86,9 @@ LazyConfig = dict[str, Any] | Callable[..., dict[str, Any]]
 
 def __convert_single_config(config: dict[str, Any], env: Env) -> LazyConfig:
     def pipeline(*args: Any, **kwargs: Any):
-        registered_modules = lambda env: ModuleRegister.get_env()
-        registered_converters = lambda env: ModuleRegister.get_env()
-        import_ = lambda env: get_imports_env(config.get(IMPORTS_KEY, []))
+        registered_modules = lambda _: ModuleRegister.get_env()
+        registered_converters = lambda _: ConverterRegister.get_env()
+        import_ = lambda _: get_imports_env(config.get(IMPORTS_KEY, []))
         input = lambda env: get_input_env(config.get(ARGS_KEY, []), args, kwargs, env)
         return [registered_modules, registered_converters, import_, input]
 
@@ -111,8 +107,7 @@ def __convert_single_config(config: dict[str, Any], env: Env) -> LazyConfig:
 
 
 def __register_single_config(name: str, config: LazyConfig, env: Env):
-    module_keys = [LAYERS_KEY, CONVERTERS_KEY]
-    if isinstance(config, dict) and all(k not in config for k in module_keys):
+    if isinstance(config, dict) and LAYERS_KEY not in config:
         logger.warning(f"{name} can't be recognized as a module")
         return
     ModuleRegister.register(name, LazyModule(name, config, env))
@@ -124,46 +119,66 @@ class LazyModule:
         self.__config = config
         self.__global_env = env or {}
 
-    def get_module(self, *args: Any, **kwargs: Any) -> Any:
-        c = self.__config(*args, **kwargs) if callable(self.__config) else self.__config
-        if LAYERS_KEY not in c:
+    def __prepare_config(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        config = self.__config
+        config = config(*args, **kwargs) if callable(config) else config
+        if not isinstance(config, dict):
+            msg = f"Invalid config format. Expected dict, got {type(config)}"
+            raise ValueError(msg)
+        if LAYERS_KEY not in config:
             raise ValueError(f"Invalid config, missing {LAYERS_KEY} key")
+        key_default_pairs = [
+            (IMPORTS_KEY, []),
+            (ARGS_KEY, []),
+            (PRE_EXEC_KEY, ""),
+            (BUFFERS_KEY, []),
+            (PARAMS_KEY, []),
+            (VARS_KEY, []),
+            (POST_EXEC_KEY, ""),
+        ]
+        for key, default in key_default_pairs:
+            if key not in config:
+                config[key] = default
+        return config
+
+    def get_module(self, *args: Any, **kwargs: Any) -> Any:
+        config = self.__prepare_config(*args, **kwargs)
 
         def pipeline_before():
-            registered = lambda env: ModuleRegister.get_env()
-            import_ = lambda env: get_imports_env(c.get(IMPORTS_KEY, []))
-            input = lambda env: get_input_env(c.get(ARGS_KEY, []), args, kwargs, env)
+            registered = lambda _: ModuleRegister.get_env()
+            import_ = lambda _: get_imports_env(config[IMPORTS_KEY])
+            input = lambda env: get_input_env(config[ARGS_KEY], args, kwargs, env)
             return [registered, import_, input]
 
         def pipeline_init():
             module = PipelineModule()
-            init = lambda env: module.get_env()
-            exec_ = lambda env: get_exec_env(c.get(PRE_EXEC_KEY, ""), env)
+            init = lambda _: {"self": module}
+            exec_ = lambda env: get_exec_env(config[PRE_EXEC_KEY], env)
             return module, [init, exec_]
 
         def pipeline_after():
-            vars = lambda env: get_vars_env(c.get(VARS_KEY, []), env)
+            vars = lambda env: get_vars_env(config[VARS_KEY], env)
             return [vars]
 
         env = _pipeline_merge_env(pipeline_before(), self.__global_env)
         module, init_pipeline = pipeline_init()
         env = _pipeline_merge_env(init_pipeline, env)
 
-        buffers = get_vars_env(c.get(BUFFERS_KEY, []), env)
+        buffers = get_vars_env(config[BUFFERS_KEY], env)
         env = merge_envs((env, buffers))
-        params = get_vars_env(c.get(PARAMS_KEY, []), env)
+        params = get_vars_env(config[PARAMS_KEY], env)
         if is_env_conflict(buffers, params):
             raise ValueError("Buffers and params should not have same key")
         env = merge_envs((env, buffers, params))
         env = _pipeline_merge_env(pipeline_after(), env)
 
-        layers_str = "\n".join(str(layer) for layer in c[LAYERS_KEY])
+        layers_str = "\n".join(str(layer) for layer in config[LAYERS_KEY])
         logger.debug(f"{self.__name} layers before parsing:\n{layers_str}")
-        layers = parse_layers(c[LAYERS_KEY], env)
-        layers_str = "\n".join(str(layer) for layer in c[LAYERS_KEY])
+        layers = parse_layers(config[LAYERS_KEY], env)
+        layers_str = "\n".join(str(layer) for layer in layers)
         logger.debug(f"{self.__name} layers after parsing:\n{layers_str}")
         module.init(self.__name, layers, buffers=buffers, params=params)
-        exec_with_env(c.get(POST_EXEC_KEY, ""), env)
+        exec_with_env(config[POST_EXEC_KEY], env)
         return module
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:

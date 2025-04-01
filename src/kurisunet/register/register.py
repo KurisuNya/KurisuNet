@@ -4,7 +4,7 @@ from typing import Callable
 from loguru import logger
 
 from ..basic.types import Env
-from ..config.types import ParsedModule
+from ..config.types import Module, CustomModule
 from ..constants import OUTPUT_MODULE_NAME
 from ..net import OutputModule
 
@@ -57,14 +57,17 @@ class ConverterRegister:
         ConverterRegister.__converters.clear()
 
 
+RegisterModule = Module | CustomModule
+
+
 class ModuleRegister:
     """Register for modules."""
 
-    __builtins: dict[str, ParsedModule] = {OUTPUT_MODULE_NAME: OutputModule}
-    __modules: dict[str, ParsedModule] = copy(__builtins)
+    __builtins: dict[str, RegisterModule] = {OUTPUT_MODULE_NAME: OutputModule}
+    __modules: dict[str, RegisterModule] = copy(__builtins)
 
     @staticmethod
-    def register(name: str, module: ParsedModule):
+    def register(name: str, module: RegisterModule):
         """Register a module with a name."""
         if name in ModuleRegister.__modules:
             raise ValueError(f"Module {name} is already registered")
@@ -72,7 +75,7 @@ class ModuleRegister:
         logger.debug(f"Module {name} registered successfully")
 
     @staticmethod
-    def get(name: str) -> ParsedModule:
+    def get(name: str) -> RegisterModule:
         """Get a module by name."""
         if name not in ModuleRegister.__modules:
             raise ValueError(f"Module {name} is not registered")
