@@ -47,7 +47,7 @@ def __format_converters(converters: ListTuple) -> tuple[ConverterLayer, ...]:
 
 
 def parse_converters(
-    converters: ListTuple, env: Env | None = None
+    converters: Any, env: Env | None = None
 ) -> tuple[FinalConverterLayer, ...]:
     """Parse the expressions in the converters."""
 

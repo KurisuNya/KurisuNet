@@ -1,10 +1,10 @@
 import importlib.util
 from pathlib import Path
+from typing import Iterable
 
 from loguru import logger
 
 from ..basic.utils import to_relative_path
-
 from ..constants import CONFIG_SUFFIX, PYTHON_SUFFIX
 
 
@@ -28,9 +28,10 @@ def __register_from_path(path: Path) -> None:
         logger.warning(f"Unsupported file type: {path.suffix}, skipping {path}")
 
 
-def register_from_path_list(path_list: list[Path]) -> None:
-    for path in filter(lambda x: x.is_file(), path_list):
+def register_from_paths(paths: Iterable[Path]) -> None:
+    paths = list(paths)
+    for path in filter(lambda x: x.is_file(), paths):
         __register_from_path(path)
-    for path in filter(lambda x: x.is_dir(), path_list):
+    for path in filter(lambda x: x.is_dir(), paths):
         logger.info(f"Registering path {to_relative_path(path)}")
-        register_from_path_list(list(path.iterdir()))
+        register_from_paths(list(path.iterdir()))

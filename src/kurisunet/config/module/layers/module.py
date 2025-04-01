@@ -17,9 +17,7 @@ def __check_module(module: Any) -> None:
 def __parse_module(module: LayerModule, env: Env) -> Module:
     if isinstance(module, str):
         module = eval_string(module, env)
-    if isinstance(module, CustomModule):
-        return lambda *a, **k: module.get_module(*a, **k)
-    if isinstance(module, type):
+    if isinstance(module, (type, CustomModule)):
         return module
     if isinstance(module, FunctionType):
         return lambda *a, **k: lambda *args: module(*args, *a, **k)
