@@ -15,8 +15,6 @@ from .utils import (
     regularize_layer_from,
 )
 
-logger = get_logger("Module")
-
 
 def OutputModule(*args: Any) -> tuple[Any, ...] | Any:
     """Output module."""
@@ -39,6 +37,8 @@ class PipelineModule(nn.Module):
         modules: Iterable[nn.Module | Callable[..., Any]],
         forward_drop: set[int] = set(),
     ) -> None:
+        logger = get_logger("Module")
+
         def remove_same_drop(forward_drop: set[int], index: int, same: set[int]):
             all_indexes = {index} | same
             if all_indexes.issubset(forward_drop):
@@ -83,6 +83,7 @@ class PipelineModule(nn.Module):
         params: dict[str, Any] | None = None,
     ):
         """Real initialization of the pipeline module."""
+        logger = get_logger("Module")
         self.__meta["name"] = name
         self.__register_buffers(buffers or {})
         self.__register_params(params or {})
@@ -111,6 +112,7 @@ class PipelineModule(nn.Module):
             if i not in get_unused_layer_indexes(layers)
         )
 
+        logger = get_logger("SubModules")
         if submodule_str := self.get_submodules_str():
             logger.debug(f"{name} is created with submodules:\n{submodule_str}")
         else:
@@ -141,6 +143,7 @@ class PipelineModule(nn.Module):
         Drop submodules with indexes in drop_set.
         If resort is True, resort the submodules after dropping.
         """
+        logger = get_logger("Module")
         logger.debug(f"Dropping submodules with indexes {self.__meta['drop_set']}")
         for i in self.__meta["drop_set"]:
             del self._modules[str(i)]
@@ -150,6 +153,7 @@ class PipelineModule(nn.Module):
 
     def resort(self):
         """Resort the submodules."""
+        logger = get_logger("Module")
         logger.debug("Submodules before resorting:\n" + self.get_submodules_str())
         modules = self._modules.copy()
         for k in modules.keys():

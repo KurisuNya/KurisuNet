@@ -4,7 +4,10 @@ from typing import Literal
 from loguru import logger as base_logger
 
 LOG_LEVELS = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-LOG_NAMES = Literal["KurisuNet", "Register", "Module", "Converter", "Parser", "Utils"]
+LOG_NAMES = Literal[
+    "KurisuNet", "Register", "Module", "SubModules", "Converter", "Layers", "Utils"
+]
+default_enabled = ("KurisuNet", "Register", "Module", "Converter", "Utils")
 
 logger = base_logger.bind(name="KurisuNet")
 
@@ -16,8 +19,12 @@ def get_logger(name: LOG_NAMES):
     return base_logger.bind(name=name)
 
 
-def set_logger(level: LOG_LEVELS, names: tuple[LOG_NAMES, ...] = LOG_NAMES.__args__):
-    """Set the logger level and names to display."""
+def set_logger(level: LOG_LEVELS, names: tuple[LOG_NAMES, ...] = default_enabled):
+    """
+    Set the logger level and names to display.
+    Default enabled names: KurisuNet, Register, Module, Converter, Utils
+    SubModules and Layers are disabled by default because they are too verbose.
+    """
     name_len = max(len(name) for name in LOG_NAMES.__args__)
     level_len = max(len(level) for level in LOG_LEVELS.__args__)
     format = (
