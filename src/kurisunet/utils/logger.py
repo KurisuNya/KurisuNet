@@ -1,3 +1,4 @@
+from pathlib import Path
 import sys
 from typing import Literal
 
@@ -19,7 +20,12 @@ def get_logger(name: LOG_NAMES):
     return base_logger.bind(name=name)
 
 
-def set_logger(level: LOG_LEVELS, names: tuple[LOG_NAMES, ...] = default_enabled):
+def set_logger(
+    level: LOG_LEVELS,
+    names: tuple[LOG_NAMES, ...] = default_enabled,
+    log_file: Path | str | None = None,
+    log_file_rotation: str | None = None,
+):
     """
     Set the logger level and names to display.
     Default enabled names: KurisuNet, Register, Module, Converter, Utils
@@ -34,15 +40,21 @@ def set_logger(level: LOG_LEVELS, names: tuple[LOG_NAMES, ...] = default_enabled
         "<level>{message}</level>"
     )
 
-    def show(record):
+    def name_filter(record):
         if "name" not in record["extra"]:
             return False
         return record["extra"]["name"] in names
 
-    sources = [
-        {"sink": sys.stderr, "level": level.upper()},
-    ]
+    def file_source(log_file, rotation):
+        file_source = {"sink": log_file, "level": level.upper()}
+        if rotation:
+            file_source["rotation"] = rotation
+        return file_source
+
+    sources = [{"sink": sys.stderr, "level": level.upper()}]
+    if log_file:
+        sources.append(file_source(log_file, log_file_rotation))
 
     base_logger.remove()
-    for source in [{**s, "format": format, "filter": show} for s in sources]:
+    for source in [{**s, "format": format, "filter": name_filter} for s in sources]:
         base_logger.add(**source)
