@@ -1,13 +1,10 @@
-from copy import deepcopy
 from pathlib import Path
 from typing import Literal
 
 from safetensors import safe_open
 from safetensors.torch import save_file
 import torch
-import torch.nn as nn
 
-from ..net.module import PipelineModule
 from ..utils.logger import get_logger
 
 logger = get_logger("Utils")
@@ -18,23 +15,27 @@ def save_state_dict(
     path: str | Path,
     metadata: dict[str, str] | None = None,
 ):
+    """Save state dict to a file using safetensors."""
     save_file(state_dict, path, metadata=metadata)
 
 
 def load_state_dict(path: str | Path, device="cpu") -> dict[str, torch.Tensor]:
+    """Load state dict from a file using safetensors."""
     with safe_open(path, "pt", device=device) as f:
         return {k: f.get_tensor(k) for k in f.keys()}
 
 
-ConvertStrategy = Literal["instance_order"]
+CONVERT_STRATEGY = Literal["register_order"]
 
 
 def convert_state_dict(
     old_state_dict: dict[str, torch.Tensor],
     new_state_dict: dict[str, torch.Tensor],
-    strategy: ConvertStrategy = "instance_order",
+    strategy: CONVERT_STRATEGY = "register_order",
 ) -> dict[str, torch.Tensor]:
-    def instance_order_key_map(old_state_dict, new_state_dict) -> dict[str, str]:
+    """Convert old state dict to new state dict using a conversion strategy."""
+
+    def register_order_key_map(old_state_dict, new_state_dict) -> dict[str, str]:
         if len(old_state_dict) != len(new_state_dict):
             raise ValueError("Length of state dicts must be equal")
         old_keys = list(old_state_dict.keys())
@@ -42,19 +43,6 @@ def convert_state_dict(
         key_map = {o: n for o, n in zip(old_keys, new_keys)}
         return key_map
 
-    if strategy == "instance_order":
-        key_map = instance_order_key_map(old_state_dict, new_state_dict)
+    if strategy == "register_order":
+        key_map = register_order_key_map(old_state_dict, new_state_dict)
     return {key_map[k]: v for k, v in old_state_dict.items()}
-
-
-def get_dropped_state_dict(
-    module: nn.Module, inplace: bool = False
-) -> dict[str, torch.Tensor]:
-    if inplace:
-        logger.warning("The input module will be modified in-place")
-    else:
-        module = deepcopy(module)
-    for m in module.modules():
-        if isinstance(m, PipelineModule):
-            m.drop(resort=True)
-    return module.state_dict()
